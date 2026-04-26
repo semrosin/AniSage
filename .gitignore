@@ -5,6 +5,7 @@ client/node_modules
 client/dist
 .env
 server/.env
+*.db
 client/.env
 .DS_Store
 *.log

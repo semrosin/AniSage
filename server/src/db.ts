@@ -1,7 +1,7 @@
 import initSqlJs, { Database } from 'sql.js';
 import path from 'path';
 import fs from 'fs';
-import { AnimeSummary, User, UserMetrics, UserRating } from './types';
+import { User, UserMetrics, UserRating } from './types';
 
 const dbPath = path.resolve(process.cwd(), 'server.db');
 let db: Database;

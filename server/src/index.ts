@@ -94,7 +94,7 @@ app.get('/auth/yandex/callback', async (req, res) => {
         login: userInfo.data.default_email || userInfo.data.login || '',
         display_name: userInfo.data.real_name || userInfo.data.name || userInfo.data.login || 'Яндекс пользователь',
         email: userInfo.data.default_email || null,
-        picture: userInfo.data.picture || null
+        picture: userInfo.data.profile_picture || userInfo.data.avatar_id || userInfo.data.default_avatar_id || null
       });
     }
 

@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { NavLink, Navigate, Route, Routes } from 'react-router-dom';
+import { NavLink, Navigate, Route, Routes, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { getCurrentUser, fetchDiscover, searchAnime, getRatings, saveRating, getRecommendations } from './api.js';
 import RatingCard from './components/RatingCard.jsx';
 
 function Header({ user }) {
   if (!user) return null;
+  
+  const getPictureUrl = (pictureId) => 
+    `https://avatars.yandex.net/get-yapic/${pictureId}/islands-200`
 
   return (
     <header className="app__header">
@@ -12,17 +15,7 @@ function Header({ user }) {
         <h1 className="app__title">AniSage</h1>
         <p className="app__subtitle">Рекомендации на основе ваших оценок</p>
       </div>
-      <nav className="app__nav">
-        <NavLink to="/rating" className={({ isActive }) => isActive ? 'app__nav-link app__nav-link--active' : 'app__nav-link'}>
-          Оценить
-        </NavLink>
-        <NavLink to="/recommendations" className={({ isActive }) => isActive ? 'app__nav-link app__nav-link--active' : 'app__nav-link'}>
-          Рекомендации
-        </NavLink>
-      </nav>
-      <div className="app__user">
-        <span>{user.display_name}</span>
-      </div>
+      <img className="app__user-avatar" src={getPictureUrl(user.picture)} alt={user.display_name} />
     </header>
   );
 }
@@ -43,14 +36,6 @@ function LoginPage({ error }) {
 function RatingPage({ ratings, searchQuery, setSearchQuery, handleSearch, searchResults, discover, handleRate }) {
   return (
     <main className="rating-page">
-      <section className="rating-page__intro">
-        <h2 className="rating-page__title">Оцените первые 5 аниме</h2>
-        <p className="rating-page__text">
-          Пока вы не оцените 5 аниме, рекомендации не появятся. Выберите понравившиеся тайтлы и поставьте оценку от 1 до 10.
-        </p>
-        <p className="rating-page__progress">Оценено: {ratings.length} / 5</p>
-      </section>
-
       <section className="rating-page__search">
         <form className="search-form" onSubmit={handleSearch}>
           <input
@@ -73,38 +58,52 @@ function RatingPage({ ratings, searchQuery, setSearchQuery, handleSearch, search
   );
 }
 
-function RecommendationsPage({ recommendations }) {
+function RecommendationsPage({ recommendations, ratings, searchQuery, setSearchQuery, handleSearch, searchResults, discover, handleRate }) {
+  const hasEnoughRatings = ratings.length >= 5;
+  
   return (
     <main className="recommendations-page">
-      <section className="recommendations-page__hero">
-        <h2 className="recommendations-page__title">Ваши рекомендации</h2>
-        <p className="recommendations-page__text">
-          На основе ваших оценок мы подобрали тайтлы, которые могут вам понравиться.
-        </p>
+      <section className="recommendations-page__search">
+        <form className="search-form" onSubmit={handleSearch}>
+          <input
+            className="search-form__field"
+            type="text"
+            placeholder="Найти аниме"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+          />
+          <button className="search-form__button" type="submit">Поиск</button>
+        </form>
       </section>
 
-      <section className="recommendations-page__grid">
-        {recommendations.length ? (
-          recommendations.map((anime) => (
-            <article key={anime.id} className="recommendation-card">
-              <div className="recommendation-card__image" style={{ backgroundImage: `url(${anime.image || ''})` }} />
-              <div className="recommendation-card__body">
-                <h3 className="recommendation-card__title">{anime.title}</h3>
-                <p className="recommendation-card__meta">{anime.year || '—'} · {anime.genres?.slice(0, 3).join(', ')}</p>
-                <p className="recommendation-card__score">Score: {anime.score.toFixed(1)}</p>
-              </div>
-            </article>
-          ))
-        ) : (
-          <p className="app__info">Рекомендации пока недоступны, оцените еще тайтлов.</p>
-        )}
-      </section>
+      {hasEnoughRatings && (
+        <h2 className="recommendations-page__title">Ваши рекомендации</h2>
+      )}
+
+{!hasEnoughRatings ? (
+        <section className="recommendations-page__list">
+          <p className="app__info">Пожалуйста, оцените ваши первые 5 аниме, чтобы получить рекомендации</p>
+        </section>
+      ) : (
+        <section className="recommendations-page__grid">
+          {recommendations.map((anime) => (
+              <article key={anime.id} className="recommendation-card">
+                <div className="recommendation-card__image" style={{ backgroundImage: `url(${anime.image || ''})` }} />
+                <div className="recommendation-card__body">
+                  <h3 className="recommendation-card__title">{anime.title}</h3>
+                  <p className="recommendation-card__meta">{anime.year || '—'} · {anime.genres?.slice(0, 3).join(', ')}</p>
+                  <p className="recommendation-card__score">Score: {anime.score.toFixed(1)}</p>
+                </div>
+              </article>
+            ))}
+        </section>
+      )}
     </main>
   );
 }
 
 function PrivateRoute({ allow, redirectTo, authChecked, status, user, children }) {
-  if (!authChecked || status === 'loading') {
+  if (!authChecked) {
     return <p className="app__info">Загрузка...</p>;
   }
   if (!user) {
@@ -117,6 +116,8 @@ function PrivateRoute({ allow, redirectTo, authChecked, status, user, children }
 }
 
 function App() {
+  const navigate = useNavigate();
+  
   const [user, setUser] = useState(null);
   const [ratings, setRatings] = useState([]);
   const [discover, setDiscover] = useState([]);
@@ -155,12 +156,10 @@ function App() {
       if (response.ratings.length < 5) {
         const discoverResponse = await fetchDiscover();
         setDiscover(discoverResponse.results);
-        setStatus('rating');
-      } else {
-        await loadRecommendations();
+        return;
       }
-    } catch (err) {
-      setError('Не удалось загрузить оценки.');
+      await loadRecommendations();
+    } finally {
       setStatus('recommendations');
     }
   }
@@ -169,8 +168,6 @@ function App() {
     try {
       const response = await getRecommendations();
       setRecommendations(response.recommendations);
-    } catch (err) {
-      setError(err.message || 'Ошибка рекомендаций');
     } finally {
       setStatus('recommendations');
     }
@@ -192,12 +189,13 @@ function App() {
     try {
       const response = await searchAnime(searchQuery);
       setSearchResults(response.results);
+      navigate('/search?q=' + encodeURIComponent(searchQuery));
     } catch (err) {
       setError('Поиск не удался. Попробуйте другой запрос.');
     }
   }
 
-  const targetRoute = !user ? '/login' : status === 'rating' ? '/rating' : '/recommendations';
+  const targetRoute = !user ? '/login' : '/recommendations';
 
   return (
     <div className="app">
@@ -218,12 +216,12 @@ function App() {
         />
         <Route path="/login" element={user ? <Navigate to={targetRoute} replace /> : <LoginPage error={error} />} />
         <Route
-          path="/rating"
+          path={`/search`}
           element={
             <PrivateRoute allow={true} redirectTo="/login" authChecked={authChecked} status={status} user={user}>
-              <RatingPage 
-                ratings={ratings} 
-                searchQuery={searchQuery} 
+              <RatingPage
+                ratings={ratings}
+                searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
                 handleSearch={handleSearch}
                 searchResults={searchResults}
@@ -236,8 +234,17 @@ function App() {
         <Route
           path="/recommendations"
           element={
-            <PrivateRoute allow={status === 'recommendations'} redirectTo="/rating" authChecked={authChecked} status={status} user={user}>
-              <RecommendationsPage recommendations={recommendations} />
+            <PrivateRoute allow={true} redirectTo="/login" authChecked={authChecked} status={status} user={user}>
+              <RecommendationsPage 
+                recommendations={recommendations}
+                ratings={ratings}
+                searchQuery={searchQuery} 
+                setSearchQuery={setSearchQuery}
+                handleSearch={handleSearch}
+                searchResults={searchResults}
+                discover={discover}
+                handleRate={handleRate}
+              />
             </PrivateRoute>
           }
         />
