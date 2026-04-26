@@ -4,7 +4,6 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import axios from 'axios';
 import dotenv from 'dotenv';
-import path from 'path';
 import {
   initDb,
   createUser,
@@ -17,7 +16,7 @@ import {
   getStudioSimilarities
 } from './db';
 import { normalizeRating, buildMetricsFromRatings, buildRecommendations } from './recommendation';
-import { fetchAnimeById, searchAnime, fetchPopularAnime, enrichCandidates, filterEroticAnime } from './shikimori';
+import { fetchAnimeById, searchAnime, fetchPopularAnime, enrichCandidates } from './shikimori';
 import { UserRating } from './types';
 
 dotenv.config();
@@ -189,7 +188,6 @@ app.get('/api/recommendations', requireAuth, async (req, res) => {
   try {
     const candidates = await fetchPopularAnime(40);
     const enrichedCandidates = await enrichCandidates(candidates, 40);
-    // const filteredCandidates = filterEroticAnime(enrichedCandidates);
     const recommendations = buildRecommendations(enrichedCandidates, ratings, metrics, similarityMatrix);
     res.json({ recommendations });
   } catch (error) {
