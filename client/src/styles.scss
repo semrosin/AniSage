@@ -27,6 +27,7 @@ a {
 
 .app {
   max-width: 1280px;
+  min-height: 100vh;
   margin: 0 auto;
   padding-right: 2rem;
   padding-left: 2rem;
@@ -128,7 +129,6 @@ a {
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: rgba(0, 0, 0, 0.4);
   border-radius: 24px;
   padding: 54px;
   padding-top: 60px;
@@ -148,6 +148,8 @@ a {
   margin: 0 0 20px;
   font-size: 1.2rem;
   font-weight: 500;
+  padding-bottom: 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
 
   @media screen and (max-width: 500px) {
     font-size: 1.1rem;
@@ -495,12 +497,14 @@ a {
   cursor: not-allowed;
 }
 
-.app__footer {
+.footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 24px 0;
+  padding: 24px 50px;
   margin-top: 48px;
+  margin-left: 20px;
+  margin-right: 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 
   @media screen and (max-width: 500px) {
@@ -509,38 +513,42 @@ a {
     padding: 20px 0;
     margin-top: 32px;
   }
-}
 
-.app__footer-left,
-.app__footer-right {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
+  &-left,
+  &-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
 
-.app__footer-link {
-  color: #b6b6b6;
-  font-size: 0.9rem;
-  transition: color 200ms ease;
+  &-link {
+    color: #b6b6b6;
+    font-size: 0.9rem;
+    transition: color 200ms ease;
 
-  &:hover {
-    color: #f7f7fb;
+    &:hover {
+      color: #f7f7fb;
+    }
+  }
+
+  &-icon {
+    color: #ffffff;
+    transition: color 200ms ease, transform 200ms ease;
+
+    &:hover {
+      transform: scale(1.1);
+    }
+
+    &--heart {
+      color: #E46AE6;
+    }
   }
 }
 
-.app__footer-icon {
-  color: #ffffff;
-  transition: color 200ms ease, transform 200ms ease;
-
-  &:hover {
-    transform: scale(1.1);
-  }
-
-  &--heart {
-    color: #E46AE6;
-  }
-}
-
+.footer-link:hover
+ {
+  color: #f7f7fb;
+ }
 
 .privacy-policy {
   max-width: 800px;

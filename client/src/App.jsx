@@ -187,15 +187,15 @@ function RecommendationsPage({ recommendations, ratings }) {
 
 function Footer() {
   return (
-    <footer className="app__footer">
-      <div className="app__footer-left">
-        <NavLink to="/privacy" className="app__footer-link">Политика конфиденциальности</NavLink>
+    <footer className="footer">
+      <div className="footer-left">
+        <NavLink to="/privacy" className="footer-link">Политика конфиденциальности</NavLink>
       </div>
-      <div className="app__footer-right">
-        <a href="https://github.com/semrosin/AniSage" target="_blank" rel="noopener noreferrer" className="app__footer-icon">
+      <div className="footer-right">
+        <a href="https://github.com/semrosin/AniSage" target="_blank" rel="noopener noreferrer" className="footer-icon">
           <FaGithub size={20} />
         </a>
-        <a href="https://boosty.to/semrosin/donate" target="_blank" rel="noopener noreferrer" className="app__footer-icon app__footer-icon--heart">
+        <a href="https://boosty.to/semrosin/donate" target="_blank" rel="noopener noreferrer" className="footer-icon footer-icon--heart">
           <FaHeart size={20} />
         </a>
       </div>
@@ -374,8 +374,8 @@ function App() {
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-        <Footer />
       </div>
+      <Footer />
     </>
   );
 }
