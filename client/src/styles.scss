@@ -321,7 +321,7 @@ a {
 .anime-card:hover {
   text-decoration: underline;
   transform: scale(1.01);
-  transition: all 200ms ease;
+  transition: all 300ms ease;
 }
 
 .anime-page {
@@ -465,7 +465,7 @@ a {
   border: none;
   font-size: 34px;
   cursor: pointer;
-  color: #8b8b8b;
+  color: #a3a3a3;
   transition: color 200ms ease, transform 150ms ease;
   padding: 0;
 }
@@ -529,11 +529,10 @@ a {
 }
 
 .app__footer-icon {
-  color: #b6b6b6;
+  color: #ffffff;
   transition: color 200ms ease, transform 200ms ease;
 
   &:hover {
-    color: #f7f7fb;
     transform: scale(1.1);
   }
 
@@ -541,6 +540,7 @@ a {
     color: #E46AE6;
   }
 }
+
 
 .privacy-policy {
   max-width: 800px;

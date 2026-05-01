@@ -5,8 +5,7 @@ import AnimeCard from './components/AnimeCard.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
 import { TbBrandYandex } from "react-icons/tb";
 import { CiSearch } from "react-icons/ci";
-import { FaHeart, FaRegHeart, FaGithub } from "react-icons/fa6";
-import { AiOutlineGithub, AiFillGithub } from "react-icons/ai";
+import { FaHeart, FaGithub } from "react-icons/fa6";
 import parser from "bbcode-to-react";
 
 function Header({ user, handleSearch, searchQuery, setSearchQuery }) {
@@ -89,7 +88,7 @@ function AnimePage({ ratings, onRate }) {
         <div className="anime-page__meta">
           <p><strong>Год выпуска</strong> <span>{anime.year || 'Ещё не вышло'}</span></p>
           <p><strong>Жанры</strong> <span>{anime.genres?.join(', ') || '—'}</span></p>
-          <p><strong>Студия</strong> <span>{anime.studios?.join(', ') || '—'}</span></p>
+          <p><strong>Студии</strong> <span>{anime.studios?.join(', ') || '—'}</span></p>
           <p><strong>Средняя оценка</strong> <span>{Number(anime.score)?.toFixed(1) || '—'}</span></p>
           <p><strong>Эпизодов</strong> <span>{anime.episodes || '—'}</span></p>
         </div>
