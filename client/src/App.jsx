@@ -193,10 +193,10 @@ function Footer() {
       </div>
       <div className="footer-right">
         <a href="https://github.com/semrosin/AniSage" target="_blank" rel="noopener noreferrer" className="footer-icon">
-          <FaGithub size={20} />
+          <FaGithub size={22} />
         </a>
         <a href="https://boosty.to/semrosin/donate" target="_blank" rel="noopener noreferrer" className="footer-icon footer-icon--heart">
-          <FaHeart size={20} />
+          <FaHeart size={22} />
         </a>
       </div>
     </footer>
