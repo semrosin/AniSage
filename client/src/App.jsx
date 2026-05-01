@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, Navigate, Route, Routes, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { getCurrentUser, fetchDiscover, searchAnime, getRatings, saveRating, getRecommendations } from './api.js';
-import RatingCard from './components/RatingCard.jsx';
+import AnimeCard from './components/AnimeCard.jsx';
 import { TbBrandYandex } from "react-icons/tb";
 import { CiSearch } from "react-icons/ci";
 
@@ -52,20 +52,20 @@ function LoginPage({ error }) {
   );
 }
 
-function RatingPage({ ratings, searchQuery, setSearchQuery, handleSearch, searchResults, discover, handleRate }) {
+function SearchPage({ searchQuery, searchResults, discover }) {
   const isSearching = searchQuery && searchResults.length === 0;
 
   return (
-    <main className="rating-page">
+    <main className="search-page">
       {searchQuery && (
-        <h2 className="rating-page__title">Результаты поиска по запросу "{searchQuery}"</h2>
+        <h2 className="search-page__title">Результаты поиска по запросу "{searchQuery}"</h2>
       )}
       <section className="anime-list">
         {isSearching ? (
           <p className="app__info">Загрузка...</p>
         ) : (
           (searchResults.length ? searchResults : discover).map((anime) => (
-            <RatingCard key={anime.id} anime={anime} onRate={handleRate} />
+            <AnimeCard key={anime.id} anime={anime} />
           ))
         )}
       </section>
@@ -73,7 +73,7 @@ function RatingPage({ ratings, searchQuery, setSearchQuery, handleSearch, search
   );
 }
 
-function RecommendationsPage({ recommendations, ratings, searchQuery, setSearchQuery, handleSearch, searchResults, discover, handleRate }) {
+function RecommendationsPage({ recommendations, ratings }) {
   const hasEnoughRatings = ratings.length >= 5;
   
   return (
@@ -89,7 +89,7 @@ function RecommendationsPage({ recommendations, ratings, searchQuery, setSearchQ
       ) : (
         <section className="anime-list">
           {recommendations.map((anime) => (
-            <RatingCard key={anime.id} anime={anime} onRate={handleRate} />
+            <AnimeCard key={anime.id} anime={anime} />
           ))}
       </section>
       )}
@@ -123,7 +123,6 @@ function App() {
   const [error, setError] = useState('');
   const [authChecked, setAuthChecked] = useState(false);
 
-  // Получаем параметр q из поисковой строки
   const urlParams = new URLSearchParams(location.search);
   const searchQuery = urlParams.get('q') || '';
 
@@ -195,13 +194,12 @@ function App() {
   function handleSearch(event) {
     event.preventDefault();
     if (!searchQuery.trim()) return;
-    // Просто переходим на страницу поиска, поиск будет выполнен уже там
     navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
   }
 
   useEffect(() => {
     if (location.pathname === '/search' && searchQuery.trim()) {
-      setSearchResults([]); // очищаем предыдущие результаты для показа загрузки
+      setSearchResults([]);
       searchAnime(searchQuery)
         .then(response => setSearchResults(response.results))
         .catch(() => setError('Поиск не удался. Попробуйте другой запрос.'));
@@ -236,14 +234,10 @@ function App() {
           path={`/search`}
           element={
             <PrivateRoute allow={true} redirectTo="/login" authChecked={authChecked} status={status} user={user}>
-              <RatingPage
-                ratings={ratings}
+              <SearchPage
                 searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                handleSearch={handleSearch}
                 searchResults={searchResults}
                 discover={discover}
-                handleRate={handleRate}
               />
             </PrivateRoute>
           }
@@ -255,12 +249,6 @@ function App() {
               <RecommendationsPage 
                 recommendations={recommendations}
                 ratings={ratings}
-                searchQuery={searchQuery} 
-                setSearchQuery={setSearchQuery}
-                handleSearch={handleSearch}
-                searchResults={searchResults}
-                discover={discover}
-                handleRate={handleRate}
               />
             </PrivateRoute>
           }

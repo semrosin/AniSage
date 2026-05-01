@@ -105,14 +105,6 @@ a {
   color: #ff7a7a;
 }
 
-.rating-page__intro,
-.recommendations-page__hero {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 24px;
-  padding: 32px;
-}
-
 .login-card {
   display: flex;
   flex-direction: column;
@@ -127,13 +119,13 @@ a {
 }
 
 .login-card__title,
-.rating-page__title,
+.search-page__title,
 .recommendations-page__title {
   margin: 0 0 20px;
   font-size: 1.2rem;
 }
 
-.rating-page__text,
+.search-page__text,
 .recommendations-page__text {
   margin: 0;
   color: #bbc1d2;
