@@ -137,6 +137,20 @@ app.get('/anime/discover', async (req, res) => {
   }
 });
 
+app.get('/anime/:id', requireAuth, async (req, res) => {
+  const animeId = parseInt(req.params.id);
+  if (isNaN(animeId)) {
+    return res.status(400).json({ error: 'Invalid anime id' });
+  }
+
+  try {
+    const anime = await fetchAnimeById(animeId);
+    res.json(anime);
+  } catch (e) {
+    res.status(404).json({ error: 'Anime not found' });
+  }
+});
+
 app.get('/ratings', requireAuth, (req, res) => {
   const userId = req.session.userId!;
   const ratings = getRatingsByUser(userId);

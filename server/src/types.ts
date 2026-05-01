@@ -40,4 +40,9 @@ export interface AnimeSummary {
   year?: number;
   genres: string[];
   studios: string[];
+  score?: number;
+  episodes?: number | null;
+  status?: string | null;
+  country?: string | null;
+  description?: string;
 }

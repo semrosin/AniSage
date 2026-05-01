@@ -114,6 +114,6 @@ export function buildRecommendations(
       score: scoreAnime(candidate, metrics, similarityMatrix)
     }))
     .sort((a, b) => b.score - a.score)
-    .slice(0, 20)
+    .slice(0, 50)
     .map(item => ({ ...item.anime, score: item.score }));
 }

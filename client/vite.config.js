@@ -6,6 +6,7 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
+    historyApiFallback: true,
     proxy: {
       '/auth': 'http://localhost:4000',
       '/anime': 'http://localhost:4000',
@@ -13,5 +14,8 @@ export default defineConfig({
       '/api': 'http://localhost:4000',
       '/system': 'http://localhost:4000'
     }
+  },
+  build: {
+    outDir: 'dist'
   }
 });

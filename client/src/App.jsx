@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, Navigate, Route, Routes, useNavigate, useParams, useLocation } from 'react-router-dom';
-import { getCurrentUser, fetchDiscover, searchAnime, getRatings, saveRating, getRecommendations } from './api.js';
+import { getCurrentUser, fetchDiscover, searchAnime, getRatings, saveRating, getRecommendations, getAnimeDetails } from './api.js';
 import AnimeCard from './components/AnimeCard.jsx';
 import { TbBrandYandex } from "react-icons/tb";
 import { CiSearch } from "react-icons/ci";
+import parser from "bbcode-to-react";
 
 function Header({ user, handleSearch, searchQuery, setSearchQuery }) {
   if (!user) return null;
@@ -33,6 +34,88 @@ function Header({ user, handleSearch, searchQuery, setSearchQuery }) {
       </form>
       <img className="app__user-avatar" src={getPictureUrl(user.picture)} alt={user.display_name} />
     </header>
+  );
+}
+
+function AnimePage({ ratings, onRate }) {
+  const { id } = useParams();
+  const [anime, setAnime] = useState(null);
+  const [userRating, setUserRating] = useState(0);
+  const [originalRating, setOriginalRating] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    getAnimeDetails(id).then(data => {
+      setAnime(data);
+      console.log('Anime details:', data);
+      const existingRating = ratings.find(r => r.anime_id == id);
+      if (existingRating) {
+        setUserRating(existingRating.raw_rating);
+        setOriginalRating(existingRating.raw_rating);
+      }
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, [id, ratings]);
+
+  const handleSaveRating = async () => {
+    setSaving(true);
+    await onRate(parseInt(id), userRating);
+    setOriginalRating(userRating);
+    setSaving(false);
+  };
+
+  const hasChanges = userRating !== originalRating;
+
+  if (loading) {
+    return <p className="app__info">Загрузка...</p>;
+  }
+
+  if (!anime) {
+    return <p className="app__error">Аниме не найдено</p>;
+  }
+
+  return (
+    <main className="anime-page">
+      <div className="anime-page__poster">
+        <img src={anime.image} alt={anime.title} />
+      </div>
+
+      <div className="anime-page__info">
+        <h1 className="anime-page__title">{anime.title}</h1>
+        
+        <div className="anime-page__meta">
+          <p><strong>Год</strong> <span>{anime.year || '—'}</span></p>
+          <p><strong>Жанры</strong> <span>{anime.genres?.join(', ') || '—'}</span></p>
+          <p><strong>Студия</strong> <span>{anime.studios?.join(', ') || '—'}</span></p>
+          <p><strong>Средняя оценка</strong> <span>{Number(anime.score)?.toFixed(1) || '—'}</span></p>
+          <p><strong>Эпизодов</strong> <span>{anime.episodes || '—'}</span></p>
+          <p><strong>Описание</strong> <span>{parser.toReact(anime.description || "—")}</span></p>
+        </div>
+
+        <div className="anime-page__rating">
+          <div className="stars">
+            {Array.from({ length: 10 }, (_, i) => i + 1).map(star => (
+              <button
+                key={star}
+                className={`star ${star <= userRating ? 'star--active' : ''}`}
+                onClick={() => setUserRating(star)}
+              >
+                ★
+              </button>
+            ))}
+          </div>
+          
+          <button
+            className="anime-page__save-btn"
+            disabled={!hasChanges || saving}
+            onClick={handleSaveRating}
+          >
+            {saving ? 'Сохранение...' : 'Оценить'}
+          </button>
+        </div>
+      </div>
+    </main>
   );
 }
 
@@ -209,53 +292,66 @@ function App() {
   const targetRoute = !user ? '/login' : '/recommendations';
 
   return (
-    <div className="app">
+    <>
       <Header user={user}
-        searchQuery={searchQuery} 
-        setSearchQuery={setSearchQuery}
-        handleSearch={handleSearch}
+          searchQuery={searchQuery} 
+          setSearchQuery={setSearchQuery}
+          handleSearch={handleSearch}
       />
-      {error && <p className="app__error">{error}</p>}
-      <Routes>
-        <Route
-          path="/"
-          element={
-            !authChecked ? (
-              <p className="app__info">Загрузка...</p>
-            ) : !user ? (
-              <Navigate to="/login" replace />
-            ) : (
-              <Navigate to={targetRoute} replace />
-            )
-          }
-        />
-        <Route path="/login" element={user ? <Navigate to={targetRoute} replace /> : <LoginPage error={error} />} />
-        <Route
-          path={`/search`}
-          element={
-            <PrivateRoute allow={true} redirectTo="/login" authChecked={authChecked} status={status} user={user}>
-              <SearchPage
-                searchQuery={searchQuery}
-                searchResults={searchResults}
-                discover={discover}
-              />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/recommendations"
-          element={
-            <PrivateRoute allow={true} redirectTo="/login" authChecked={authChecked} status={status} user={user}>
-              <RecommendationsPage 
-                recommendations={recommendations}
-                ratings={ratings}
-              />
-            </PrivateRoute>
-          }
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </div>
+      <div className="app">
+        {error && <p className="app__error">{error}</p>}
+        <Routes>
+          <Route
+            path="/"
+            element={
+              !authChecked ? (
+                <p className="app__info">Загрузка...</p>
+              ) : !user ? (
+                <Navigate to="/login" replace />
+              ) : (
+                <Navigate to={targetRoute} replace />
+              )
+            }
+          />
+          <Route path="/login" element={user ? <Navigate to={targetRoute} replace /> : <LoginPage error={error} />} />
+          <Route
+            path={`/search`}
+            element={
+              <PrivateRoute allow={true} redirectTo="/login" authChecked={authChecked} status={status} user={user}>
+                <SearchPage
+                  searchQuery={searchQuery}
+                  searchResults={searchResults}
+                  discover={discover}
+                />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/recommendations"
+            element={
+              <PrivateRoute allow={true} redirectTo="/login" authChecked={authChecked} status={status} user={user}>
+                <RecommendationsPage 
+                  recommendations={recommendations}
+                  ratings={ratings}
+                />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/ani/:id"
+            element={
+              <PrivateRoute allow={true} redirectTo="/login" authChecked={authChecked} status={status} user={user}>
+                <AnimePage
+                  ratings={ratings}
+                  onRate={handleRate}
+                />
+              </PrivateRoute>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+    </>
   );
 }
 

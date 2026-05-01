@@ -29,6 +29,8 @@ a {
   max-width: 1280px;
   margin: 0 auto;
   padding-top: 32px;
+  padding-right: 2rem;
+  padding-left: 2rem;
 }
 
 .app--centered {
@@ -44,6 +46,17 @@ a {
   align-items: center;
   gap: 16px;
   margin-bottom: 32px;
+  width: 100%;
+  padding-top: 1rem;
+  padding-left: 5rem;
+  padding-right: 5rem;
+}
+
+@media (max-width: 900px) {
+  .app__header {
+    padding-left: 3rem;
+    padding-right: 3rem;
+  }
 }
 
 .app__title {
@@ -113,7 +126,7 @@ a {
   border-radius: 24px;
   padding: 64px;
 
-  height: 450px;
+  height: 400px;
   width: 350px;
 
 }
@@ -234,4 +247,96 @@ a {
     text-overflow: ellipsis;
     font-weight: 400;
   }
+}
+
+.anime-page {
+  display: flex;
+  gap: 48px;
+  margin-top: 24px;
+}
+
+.anime-page__poster img {
+  width: 300px;
+  border-radius: 16px;
+  object-fit: cover;
+}
+
+.anime-page__info {
+  flex: 1;
+}
+
+.anime-page__title {
+  margin: 0 0 24px 0;
+  font-size: 2rem;
+}
+
+.anime-page__meta {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 12px 24px;
+  margin-bottom: 32px;
+}
+
+.anime-page__meta p {
+  margin: 0;
+  display: contents;
+}
+
+.anime-page__meta strong {
+  color: #b6b6b6;
+  font-weight: 400;
+}
+
+.anime-page__meta span {
+  color: #f7f7fb;
+}
+
+.anime-page__rating {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 30px;
+  padding-top: 10px;
+}
+
+.stars {
+  display: flex;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.star {
+  background: transparent;
+  border: none;
+  font-size: 34px;
+  cursor: pointer;
+  color: #8b8b8b;
+  transition: color 200ms ease, transform 150ms ease;
+  padding: 0;
+}
+
+.star:hover {
+  transform: scale(1.15);
+}
+
+.star--active {
+  color: #ffd700;
+}
+
+.anime-page__save-btn {
+  padding: 10px 20px;
+  background: #E46AE6;
+  border: none;
+  border-radius: 10px;
+  color: white;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: opacity 200ms ease;
+}
+
+.anime-page__save-btn:disabled {
+  background: #fd90ff6e;
+  color: #cacaca;
+  cursor: not-allowed;
 }

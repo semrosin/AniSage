@@ -75,9 +75,14 @@ function normalizeApiAnime(item: any): AnimeSummary {
     id: item.id,
     title: item.russian || item.name || String(item.id),
     image,
-    year: item.year || null,
+    year: item.year || (item.released_on ? parseInt(item.released_on.substring(0, 4)) : undefined),
     genres,
     studios,
+    score: item.score || 0,
+    episodes: item.episodes || null,
+    status: item.status || null,
+    country: item.country || null,
+    description: item.description || '',
   };
 }
 
@@ -123,6 +128,7 @@ export async function fetchAnimeById(animeId: number): Promise<AnimeSummary> {
 
   const data = await axiosGetWithRetry<any>(`${BASE_URL}/animes/${animeId}`);
   const normalized = normalizeApiAnime(data);
+  console.log(`✅ Fetched anime details for ID ${animeId}:`, normalized);
   animeCache.set(animeId, normalized);
   return normalized;
 }

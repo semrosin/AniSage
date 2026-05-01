@@ -19,7 +19,6 @@ export function getCurrentUser() {
 }
 
 function mapAnimeFields(item) {
-  console.log('✅ Сервер вернул аниме:', item);
   return {
     id: item.anime_id || item.id,
     title: item.title,
@@ -63,4 +62,8 @@ export async function getRecommendations() {
     ...data,
     recommendations: data.recommendations?.map(mapAnimeFields) || []
   };
+}
+
+export function getAnimeDetails(animeId) {
+  return request(`/anime/${animeId}`);
 }
