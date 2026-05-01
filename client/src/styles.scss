@@ -12,9 +12,7 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(circle at top left, rgba(61, 96, 240, 0.16), transparent 32%),
-    radial-gradient(circle at bottom right, rgba(112, 67, 253, 0.12), transparent 28%),
-    #0f1218;
+  background: #0d0324;
 }
 
 button,
@@ -28,7 +26,6 @@ a {
 }
 
 .app {
-  padding: 32px;
   max-width: 1280px;
   margin: 0 auto;
 }
@@ -81,7 +78,6 @@ a {
   color: #ff7a7a;
 }
 
-.login-card,
 .rating-page__intro,
 .recommendations-page__hero {
   background: rgba(255, 255, 255, 0.05);
@@ -90,18 +86,38 @@ a {
   padding: 32px;
 }
 
+.login-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 24px;
+  padding: 64px;
+
+  height: 450px;
+  width: 350px;
+
+}
+
 .login-card__title,
 .rating-page__title,
 .recommendations-page__title {
   margin: 0 0 12px;
-  font-size: 2rem;
+  font-size: 1.2rem;
 }
 
-.login-card__text,
 .rating-page__text,
 .recommendations-page__text {
   margin: 0;
   color: #bbc1d2;
+}
+
+.login-card__buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  width: 100%;
 }
 
 .login-card__button,
@@ -109,19 +125,22 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: none;
-  background: linear-gradient(135deg, #5b66ff, #b564ff);
+  border: 2px solid;
   color: #fff;
   padding: 14px 22px;
   border-radius: 14px;
   cursor: pointer;
   transition: transform 0.18s ease, box-shadow 0.18s ease;
+  height: 40px;
+  width: 100%;
 }
 
 .login-card__button:hover,
 .search-form__button:hover {
   transform: translateY(-1px);
-  box-shadow: 0 18px 40px rgba(91, 102, 255, 0.18);
+  background: white;
+  color: black;
+  box-shadow: 0 8px 40px rgba(91, 102, 255, 0.18);
 }
 
 .login-card__error {

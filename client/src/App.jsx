@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { NavLink, Navigate, Route, Routes, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { getCurrentUser, fetchDiscover, searchAnime, getRatings, saveRating, getRecommendations } from './api.js';
 import RatingCard from './components/RatingCard.jsx';
+import { TbBrandYandex } from "react-icons/tb";
 
 function Header({ user }) {
   if (!user) return null;
@@ -24,9 +25,12 @@ function LoginPage({ error }) {
   return (
     <div className="app app--centered">
       <section className="login-card">
-        <h1 className="login-card__title">AniSage</h1>
-        <p className="login-card__text">Авторизуйтесь через Яндекс, чтобы начать получать рекомендации.</p>
-        <a className="login-card__button" href="/auth/login">Войти через Яндекс</a>
+        <h1 className="login-card__title">Войдите с помощью</h1>
+        <div className='login-card__buttons'>
+          <a className="login-card__button" href="/auth/login">
+            <TbBrandYandex size={25}/>
+          </a>
+        </div>
         {error && <p className="login-card__error">{error}</p>}
       </section>
     </div>
