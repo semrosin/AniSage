@@ -200,8 +200,8 @@ app.get('/api/recommendations', requireAuth, async (req, res) => {
   }
 
   try {
-    const candidates = await fetchPopularAnime(40);
-    const enrichedCandidates = await enrichCandidates(candidates, 40);
+    const candidates = await fetchPopularAnime(50);
+    const enrichedCandidates = await enrichCandidates(candidates);
     const recommendations = buildRecommendations(enrichedCandidates, ratings, metrics, similarityMatrix);
     res.json({ recommendations });
   } catch (error) {

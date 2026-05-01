@@ -30,7 +30,6 @@ const ALLOWED_KINDS = [
   'movie',
   'ova',
   'ona',
-  'tv_special',
 ];
 
 function sleep(ms: number) {
@@ -116,7 +115,7 @@ export async function searchAnime(query: string, limit = 50): Promise<AnimeSumma
 export async function fetchPopularAnime(limit = 50): Promise<AnimeSummary[]> {
   return fetchAnimeList({
     order: 'popularity',
-    limit: Math.min(limit, 50),
+    limit: limit,
     page: 1,
   });
 }
@@ -164,7 +163,7 @@ async function mapWithConcurrency<T, R>(items: T[], fn: (item: T) => Promise<R>,
   return results;
 }
 
-export async function enrichCandidates(candidates: AnimeSummary[], topN = 40): Promise<AnimeSummary[]> {
+export async function enrichCandidates(candidates: AnimeSummary[], topN = 60): Promise<AnimeSummary[]> {
   const slice = candidates.slice(0, topN);
   return mapWithConcurrency(slice, enrichAnimeDetails, MAX_CONCURRENT_ENRICH);
 }

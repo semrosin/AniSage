@@ -2,8 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { NavLink, Navigate, Route, Routes, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { getCurrentUser, fetchDiscover, searchAnime, getRatings, saveRating, getRecommendations, getAnimeDetails } from './api.js';
 import AnimeCard from './components/AnimeCard.jsx';
+import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
 import { TbBrandYandex } from "react-icons/tb";
 import { CiSearch } from "react-icons/ci";
+import { FaHeart, FaRegHeart, FaGithub } from "react-icons/fa6";
+import { AiOutlineGithub, AiFillGithub } from "react-icons/ai";
 import parser from "bbcode-to-react";
 
 function Header({ user, handleSearch, searchQuery, setSearchQuery }) {
@@ -48,7 +51,6 @@ function AnimePage({ ratings, onRate }) {
   useEffect(() => {
     getAnimeDetails(id).then(data => {
       setAnime(data);
-      console.log('Anime details:', data);
       const existingRating = ratings.find(r => r.anime_id == id);
       if (existingRating) {
         setUserRating(existingRating.raw_rating);
@@ -85,12 +87,16 @@ function AnimePage({ ratings, onRate }) {
         <h1 className="anime-page__title">{anime.title}</h1>
         
         <div className="anime-page__meta">
-          <p><strong>Год</strong> <span>{anime.year || '—'}</span></p>
+          <p><strong>Год выпуска</strong> <span>{anime.year || 'Ещё не вышло'}</span></p>
           <p><strong>Жанры</strong> <span>{anime.genres?.join(', ') || '—'}</span></p>
           <p><strong>Студия</strong> <span>{anime.studios?.join(', ') || '—'}</span></p>
           <p><strong>Средняя оценка</strong> <span>{Number(anime.score)?.toFixed(1) || '—'}</span></p>
           <p><strong>Эпизодов</strong> <span>{anime.episodes || '—'}</span></p>
-          <p><strong>Описание</strong> <span>{parser.toReact(anime.description || "—")}</span></p>
+        </div>
+
+        <div className="anime-page__description">
+          <p><strong>Описание</strong></p>
+          <p>{parser.toReact(anime.description || "—")}</p>
         </div>
 
         <div className="anime-page__rating">
@@ -180,6 +186,24 @@ function RecommendationsPage({ recommendations, ratings }) {
   );
 }
 
+function Footer() {
+  return (
+    <footer className="app__footer">
+      <div className="app__footer-left">
+        <NavLink to="/privacy" className="app__footer-link">Политика конфиденциальности</NavLink>
+      </div>
+      <div className="app__footer-right">
+        <a href="https://github.com/semrosin/AniSage" target="_blank" rel="noopener noreferrer" className="app__footer-icon">
+          <FaGithub size={20} />
+        </a>
+        <a href="https://boosty.to/semrosin/donate" target="_blank" rel="noopener noreferrer" className="app__footer-icon app__footer-icon--heart">
+          <FaHeart size={20} />
+        </a>
+      </div>
+    </footer>
+  );
+}
+
 function PrivateRoute({ allow, redirectTo, authChecked, status, user, children }) {
   if (!authChecked) {
     return <p className="app__info">Загрузка...</p>;
@@ -223,7 +247,6 @@ function App() {
         setStatus('ready');
       }
     } catch (err) {
-      setError('Не удалось получить данные пользователя.');
       setStatus('ready');
     } finally {
       setAuthChecked(true);
@@ -349,8 +372,10 @@ function App() {
               </PrivateRoute>
             }
           />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <Footer />
       </div>
     </>
   );
