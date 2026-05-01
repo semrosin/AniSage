@@ -128,7 +128,6 @@ export async function fetchAnimeById(animeId: number): Promise<AnimeSummary> {
 
   const data = await axiosGetWithRetry<any>(`${BASE_URL}/animes/${animeId}`);
   const normalized = normalizeApiAnime(data);
-  console.log(`✅ Fetched anime details for ID ${animeId}:`, normalized);
   animeCache.set(animeId, normalized);
   return normalized;
 }

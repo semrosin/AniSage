@@ -48,14 +48,12 @@ a {
   margin-bottom: 32px;
   width: 100%;
   padding-top: 1rem;
-  padding-left: 5rem;
-  padding-right: 5rem;
-}
+  padding-left: 3rem;
+  padding-right: 3rem;
 
-@media (max-width: 900px) {
-  .app__header {
-    padding-left: 3rem;
-    padding-right: 3rem;
+  @media screen and (max-width: 500px) {
+    padding-left: 1rem;
+    padding-right: 1rem;
   }
 }
 
@@ -175,7 +173,7 @@ a {
 
 .search-form__field {
   width: 100%;
-  padding: 10px 54px 12px 18px;
+  padding: 10px 64px 12px 22px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 24px;
@@ -218,7 +216,17 @@ a {
 .anime-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 20px;
+  gap: 1.25rem;
+
+  @media screen and (max-width: 300px) {
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 0.75rem;
+  }
+
+  @media screen and (max-width: 500px) {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.75rem;
+  }
 }
 
 .anime-card { 
@@ -226,14 +234,17 @@ a {
   display: flex;
   flex-direction: column;
   min-height: 320px;
-  gap: 8px;
+  gap: 10px;
 
   &__image {
-    height: 260px;
+    height: 17.5rem;
     background-size: cover;
     background-position: center;
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 20px;
+    @media (max-width: 500px) {
+      height: 12rem;
+    }
   }
 
   &__title {
@@ -256,7 +267,7 @@ a {
 }
 
 .anime-page__poster img {
-  width: 300px;
+  width: 16rem;
   border-radius: 16px;
   object-fit: cover;
 }

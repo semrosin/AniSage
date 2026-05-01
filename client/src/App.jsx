@@ -293,10 +293,11 @@ function App() {
 
   return (
     <>
-      <Header user={user}
-          searchQuery={searchQuery} 
-          setSearchQuery={setSearchQuery}
-          handleSearch={handleSearch}
+      <Header
+        user={user}
+        searchQuery={searchQuery} 
+        setSearchQuery={setSearchQuery}
+        handleSearch={handleSearch}
       />
       <div className="app">
         {error && <p className="app__error">{error}</p>}
