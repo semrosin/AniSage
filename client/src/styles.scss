@@ -28,6 +28,7 @@ a {
 .app {
   max-width: 1280px;
   margin: 0 auto;
+  padding-top: 32px;
 }
 
 .app--centered {
@@ -40,14 +41,40 @@ a {
 .app__header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 16px;
   margin-bottom: 32px;
 }
 
 .app__title {
   margin: 0;
-  font-size: 2.4rem;
+  font-size: 1.8rem;
+}
+
+.app__logo-link {
+  position: relative;
+  display: inline-block;
+}
+
+.app__logo {
+  width: 35px;
+  height: 35px;
+  transition: opacity 1000ms ease;
+}
+
+.app__logo--rotated {
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+}
+
+.app__logo-link:hover .app__logo--default {
+  opacity: 0;
+}
+
+.app__logo-link:hover .app__logo--rotated {
+  opacity: 1;
 }
 
 .app__subtitle {
@@ -61,8 +88,8 @@ a {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 18px;
   &-avatar {
-    width: 50px;
-    height: 50px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     object-fit: cover;
   }
@@ -137,14 +164,16 @@ a {
 .search-form {
   position: relative;
   margin: 24px 0;
+  width: 100%;
+  max-width: 500px;
 }
 
 .search-form__field {
   width: 100%;
-  padding: 14px 54px 14px 18px;
+  padding: 10px 54px 12px 18px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
+  border-radius: 24px;
   color: #f8f8ff;
 }
 

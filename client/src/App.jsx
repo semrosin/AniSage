@@ -5,7 +5,7 @@ import RatingCard from './components/RatingCard.jsx';
 import { TbBrandYandex } from "react-icons/tb";
 import { CiSearch } from "react-icons/ci";
 
-function Header({ user }) {
+function Header({ user, handleSearch, searchQuery, setSearchQuery }) {
   if (!user) return null;
   
   const getPictureUrl = (pictureId) => 
@@ -14,9 +14,23 @@ function Header({ user }) {
   return (
     <header className="app__header">
       <div>
-        <h1 className="app__title">AniSage</h1>
-        <p className="app__subtitle">Рекомендации на основе ваших оценок</p>
+        <a href="/" className="app__logo-link">
+          <img className="app__logo app__logo--default" src="/Logo.svg" alt="AniSage" />
+          <img className="app__logo app__logo--rotated" src="/Logo_Rotated.svg" alt="AniSage" />
+        </a>
       </div>
+      <form className="search-form" onSubmit={handleSearch}>
+          <input
+            className="search-form__field"
+            type="text"
+            placeholder="Найти аниме"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+          />
+          <button className="search-form__button" type="submit">
+            <CiSearch size={20}/>
+          </button>
+      </form>
       <img className="app__user-avatar" src={getPictureUrl(user.picture)} alt={user.display_name} />
     </header>
   );
@@ -39,27 +53,21 @@ function LoginPage({ error }) {
 }
 
 function RatingPage({ ratings, searchQuery, setSearchQuery, handleSearch, searchResults, discover, handleRate }) {
+  const isSearching = searchQuery && searchResults.length === 0;
+
   return (
     <main className="rating-page">
-      <section className="rating-page__search">
-        <form className="search-form" onSubmit={handleSearch}>
-          <input
-            className="search-form__field"
-            type="text"
-            placeholder="Найти аниме"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-          />
-          <button className="search-form__button" type="submit">
-            <CiSearch size={22}/>
-          </button>
-        </form>
-      </section>
-
+      {searchQuery && (
+        <h2 className="rating-page__title">Результаты поиска по запросу "{searchQuery}"</h2>
+      )}
       <section className="rating-page__list">
-        {(searchResults.length ? searchResults : discover).map((anime) => (
-          <RatingCard key={anime.id} anime={anime} onRate={handleRate} />
-        ))}
+        {isSearching ? (
+          <p className="app__info">Загрузка...</p>
+        ) : (
+          (searchResults.length ? searchResults : discover).map((anime) => (
+            <RatingCard key={anime.id} anime={anime} onRate={handleRate} />
+          ))
+        )}
       </section>
     </main>
   );
@@ -70,26 +78,11 @@ function RecommendationsPage({ recommendations, ratings, searchQuery, setSearchQ
   
   return (
     <main className="recommendations-page">
-      <section className="recommendations-page__search">
-        <form className="search-form" onSubmit={handleSearch}>
-          <input
-            className="search-form__field"
-            type="text"
-            placeholder="Найти аниме"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-          />
-          <button className="search-form__button" type="submit">
-            <CiSearch size={22}/>
-          </button>
-        </form>
-      </section>
-
       {hasEnoughRatings && (
         <h2 className="recommendations-page__title">Ваши рекомендации</h2>
       )}
 
-{!hasEnoughRatings ? (
+      {!hasEnoughRatings ? (
         <section className="recommendations-page__list">
           <p className="app__info">Пожалуйста, оцените ваши первые 5 аниме, чтобы получить рекомендации</p>
         </section>
@@ -126,16 +119,20 @@ function PrivateRoute({ allow, redirectTo, authChecked, status, user, children }
 
 function App() {
   const navigate = useNavigate();
+  const location = useLocation();
   
   const [user, setUser] = useState(null);
   const [ratings, setRatings] = useState([]);
   const [discover, setDiscover] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [status, setStatus] = useState('loading');
   const [error, setError] = useState('');
   const [authChecked, setAuthChecked] = useState(false);
+
+  // Получаем параметр q из поисковой строки
+  const urlParams = new URLSearchParams(location.search);
+  const searchQuery = urlParams.get('q') || '';
 
   useEffect(() => {
     loadUser();
@@ -192,23 +189,41 @@ function App() {
     }
   }
 
-  async function handleSearch(event) {
+  function setSearchQuery(value) {
+    const params = new URLSearchParams(location.search);
+    if (value) {
+      params.set('q', value);
+    } else {
+      params.delete('q');
+    }
+    navigate(`${location.pathname}?${params.toString()}`, { replace: true });
+  }
+
+  function handleSearch(event) {
     event.preventDefault();
     if (!searchQuery.trim()) return;
-    try {
-      const response = await searchAnime(searchQuery);
-      setSearchResults(response.results);
-      navigate('/search?q=' + encodeURIComponent(searchQuery));
-    } catch (err) {
-      setError('Поиск не удался. Попробуйте другой запрос.');
-    }
+    // Просто переходим на страницу поиска, поиск будет выполнен уже там
+    navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
   }
+
+  useEffect(() => {
+    if (location.pathname === '/search' && searchQuery.trim()) {
+      setSearchResults([]); // очищаем предыдущие результаты для показа загрузки
+      searchAnime(searchQuery)
+        .then(response => setSearchResults(response.results))
+        .catch(() => setError('Поиск не удался. Попробуйте другой запрос.'));
+    }
+  }, [searchQuery, location.pathname]);
 
   const targetRoute = !user ? '/login' : '/recommendations';
 
   return (
     <div className="app">
-      <Header user={user} />
+      <Header user={user}
+        searchQuery={searchQuery} 
+        setSearchQuery={setSearchQuery}
+        handleSearch={handleSearch}
+      />
       {error && <p className="app__error">{error}</p>}
       <Routes>
         <Route
