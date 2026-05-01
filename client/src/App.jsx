@@ -60,7 +60,7 @@ function RatingPage({ ratings, searchQuery, setSearchQuery, handleSearch, search
       {searchQuery && (
         <h2 className="rating-page__title">Результаты поиска по запросу "{searchQuery}"</h2>
       )}
-      <section className="rating-page__list">
+      <section className="anime-list">
         {isSearching ? (
           <p className="app__info">Загрузка...</p>
         ) : (
@@ -83,22 +83,15 @@ function RecommendationsPage({ recommendations, ratings, searchQuery, setSearchQ
       )}
 
       {!hasEnoughRatings ? (
-        <section className="recommendations-page__list">
+        <section className="anime-list">
           <p className="app__info">Пожалуйста, оцените ваши первые 5 аниме, чтобы получить рекомендации</p>
         </section>
       ) : (
-        <section className="recommendations-page__grid">
+        <section className="anime-list">
           {recommendations.map((anime) => (
-              <article key={anime.id} className="recommendation-card">
-                <div className="recommendation-card__image" style={{ backgroundImage: `url(${anime.image || ''})` }} />
-                <div className="recommendation-card__body">
-                  <h3 className="recommendation-card__title">{anime.title}</h3>
-                  <p className="recommendation-card__meta">{anime.year || '—'} · {anime.genres?.slice(0, 3).join(', ')}</p>
-                  <p className="recommendation-card__score">Score: {anime.score.toFixed(1)}</p>
-                </div>
-              </article>
-            ))}
-        </section>
+            <RatingCard key={anime.id} anime={anime} onRate={handleRate} />
+          ))}
+      </section>
       )}
     </main>
   );

@@ -129,7 +129,7 @@ a {
 .login-card__title,
 .rating-page__title,
 .recommendations-page__title {
-  margin: 0 0 12px;
+  margin: 0 0 20px;
   font-size: 1.2rem;
 }
 
@@ -210,77 +210,36 @@ a {
   color: #ff8a8a;
 }
 
-.rating-page__progress {
-  margin-top: 16px;
-  color: #c3c9e0;
-}
-
-.rating-page__list,
-.recommendations-page__grid {
+.anime-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 20px;
 }
 
-.rating-card,
-.recommendation-card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 24px;
+.anime-card { 
   overflow: hidden;
   display: flex;
   flex-direction: column;
   min-height: 320px;
-}
-
-.rating-card__image,
-.recommendation-card__image {
-  height: 210px;
-  background-size: cover;
-  background-position: center;
-}
-
-.rating-card__content,
-.recommendation-card__body {
-  padding: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.rating-card__title,
-.recommendation-card__title {
-  margin: 0;
-  font-size: 1.1rem;
-}
-
-.rating-card__meta,
-.recommendation-card__meta,
-.recommendation-card__score {
-  margin: 0;
-  color: #adb2c8;
-  font-size: 0.92rem;
-}
-
-.rating-card__actions {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
-}
 
-.rating-card__button {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #f7f7fb;
-  padding: 10px 0;
-  border-radius: 12px;
-  cursor: pointer;
-}
+  &__image {
+    height: 260px;
+    background-size: cover;
+    background-position: center;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 20px;
+  }
 
-.rating-card__button:hover {
-  background: rgba(91, 102, 255, 0.16);
-}
-
-.recommendation-card__score {
-  color: #d0d8ff;
+  &__title {
+    padding-left: 5%;
+    padding-right: 5%;
+    margin: 0;
+    width: 100%;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 400;
+  }
 }
