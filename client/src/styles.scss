@@ -120,8 +120,7 @@ a {
   width: 100%;
 }
 
-.login-card__button,
-.search-form__button {
+.login-card__button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -135,8 +134,42 @@ a {
   width: 100%;
 }
 
-.login-card__button:hover,
+.search-form {
+  position: relative;
+  margin: 24px 0;
+}
+
+.search-form__field {
+  width: 100%;
+  padding: 14px 54px 14px 18px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  color: #f8f8ff;
+}
+
+.search-form__button {
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: #b6b6b6;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .search-form__button:hover {
+  background: transparent;
+  color: white;
+}
+
+.login-card__button:hover {
+  position: relative;
   transform: translateY(-1px);
   background: white;
   color: black;
@@ -151,21 +184,6 @@ a {
 .rating-page__progress {
   margin-top: 16px;
   color: #c3c9e0;
-}
-
-.search-form {
-  display: flex;
-  gap: 12px;
-  margin: 24px 0;
-}
-
-.search-form__field {
-  flex: 1;
-  padding: 14px 18px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
-  color: #f8f8ff;
 }
 
 .rating-page__list,

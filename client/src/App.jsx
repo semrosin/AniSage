@@ -3,6 +3,7 @@ import { NavLink, Navigate, Route, Routes, useNavigate, useParams, useLocation }
 import { getCurrentUser, fetchDiscover, searchAnime, getRatings, saveRating, getRecommendations } from './api.js';
 import RatingCard from './components/RatingCard.jsx';
 import { TbBrandYandex } from "react-icons/tb";
+import { CiSearch } from "react-icons/ci";
 
 function Header({ user }) {
   if (!user) return null;
@@ -49,7 +50,9 @@ function RatingPage({ ratings, searchQuery, setSearchQuery, handleSearch, search
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
           />
-          <button className="search-form__button" type="submit">Поиск</button>
+          <button className="search-form__button" type="submit">
+            <CiSearch size={22}/>
+          </button>
         </form>
       </section>
 
@@ -76,7 +79,9 @@ function RecommendationsPage({ recommendations, ratings, searchQuery, setSearchQ
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
           />
-          <button className="search-form__button" type="submit">Поиск</button>
+          <button className="search-form__button" type="submit">
+            <CiSearch size={22}/>
+          </button>
         </form>
       </section>
 
