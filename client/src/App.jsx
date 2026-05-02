@@ -207,7 +207,7 @@ function Footer() {
 
 function PrivateRoute({ allow, redirectTo, authChecked, status, user, children }) {
   if (!authChecked) {
-    return <p className="app__info-block__title-block__title">Думаем над вашими рекомендациями...</p>;
+    return <p className="app__info-block__title-block__title">Загрузка...</p>;
   }
   if (!user) {
     return <Navigate to="/login" replace />;
