@@ -71,7 +71,7 @@ function AnimePage({ ratings, onRate }) {
   const hasChanges = userRating !== originalRating;
 
   if (loading) {
-    return <p className="app__info">Загрузка...</p>;
+    return <p className="app__info-block__title">Загрузка...</p>;
   }
 
   if (!anime) {
@@ -152,7 +152,7 @@ function SearchPage({ searchQuery, searchResults, discover }) {
       )}
       <section className="anime-list">
         {isSearching ? (
-          <p className="app__info">Загрузка...</p>
+          <p className="app__info-block__title">Загрузка...</p>
         ) : (
           (searchResults.length ? searchResults : discover).map((anime) => (
             <AnimeCard key={anime.id} anime={anime} />
@@ -173,8 +173,8 @@ function RecommendationsPage({ recommendations, ratings }) {
       )}
 
       {!hasEnoughRatings ? (
-        <section className="app__info-block">
-          <p className="app__info-block__title">Пожалуйста, оцените ваши первые 5 аниме, чтобы получить рекомендации</p>
+        <section className="app__info-block__title-block">
+          <p className="app__info-block__title-block__title">Пожалуйста, оцените ваши первые 5 аниме, чтобы получить рекомендации</p>
         </section>
       ) : (
         <section className="anime-list">
@@ -207,7 +207,7 @@ function Footer() {
 
 function PrivateRoute({ allow, redirectTo, authChecked, status, user, children }) {
   if (!authChecked) {
-    return <p className="app__info-block__title">Думаем над вашими рекомендациями...</p>;
+    return <p className="app__info-block__title-block__title">Думаем над вашими рекомендациями...</p>;
   }
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -330,7 +330,7 @@ function App() {
             path="/"
             element={
               !authChecked ? (
-                <p className="app__info">Загрузка...</p>
+                <p className="app__info-block__title">Думаем над вашими рекомендациями...</p>
               ) : !user ? (
                 <Navigate to="/login" replace />
               ) : (

@@ -16,7 +16,7 @@ import {
   getStudioSimilarities
 } from './db';
 import { normalizeRating, buildMetricsFromRatings, buildRecommendations } from './recommendation';
-import { fetchAnimeById, searchAnime, fetchPopularAnime, enrichCandidates } from './shikimori';
+import { fetchAnimeById, searchAnime, fetchPopularAnime, enrichCandidates, getEnoughCandidates } from './shikimori';
 import { UserRating } from './types';
 
 dotenv.config();
@@ -162,7 +162,6 @@ app.post('/ratings', requireAuth, async (req, res) => {
   if (!animeId || typeof rating !== 'number') {
     return res.status(400).json({ error: 'animeId and rating are required' });
   }
-  console.log(`Saving rating for user ${req.session.userId}: anime ${animeId} = ${rating}, recommended: ${was_recommended}`);
 
   try {
     const anime = await fetchAnimeById(animeId);
@@ -202,7 +201,7 @@ app.get('/api/recommendations', requireAuth, async (req, res) => {
   }
 
   try {
-    const candidates = await fetchPopularAnime(50);
+    const candidates = await getEnoughCandidates(new Set(ratings.map(r => r.anime_id)));
     const enrichedCandidates = await enrichCandidates(candidates);
     const recommendations = buildRecommendations(enrichedCandidates, ratings, metrics, similarityMatrix);
     res.json({ recommendations });

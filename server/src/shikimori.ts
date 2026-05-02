@@ -120,6 +120,38 @@ export async function fetchPopularAnime(limit = 50): Promise<AnimeSummary[]> {
   });
 }
 
+export async function getEnoughCandidates(userRatedIds: Set<number>, target = 48) {
+  let page = 1;
+  const result: AnimeSummary[] = [];
+
+  while (result.length < target) {
+    const data = await axios.get('https://shikimori.one/api/animes', {
+      params: {
+        order: 'popularity',
+        limit: 50,
+        page
+      },
+      headers: {
+        'User-Agent': 'AniSage/1.0'
+      }
+    });
+
+    if (!data.data.length) break;
+
+    const filtered = data.data.filter((anime: any) =>
+      !userRatedIds.has(anime.id)
+    );
+
+    result.push(...filtered.map(normalizeApiAnime));
+
+    page++;
+
+    if (page > 10) break;
+  }
+
+  return result;
+}
+
 export async function fetchAnimeById(animeId: number): Promise<AnimeSummary> {
   if (animeCache.has(animeId)) {
     return animeCache.get(animeId)!;
