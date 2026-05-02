@@ -64,6 +64,7 @@ export async function initDb() {
         raw_rating INTEGER NOT NULL,
         rating_normalized INTEGER NOT NULL,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        was_recommended BOOLEAN DEFAULT FALSE,
         UNIQUE(user_id, anime_id)
       );
 
@@ -180,8 +181,8 @@ export function createUser(user: Omit<User, 'id'>): User {
 
 export function saveOrUpdateRating(rating: UserRating) {
   db.prepare(
-    `INSERT INTO user_ratings (user_id, anime_id, title, image, year, studios, genres, raw_rating, rating_normalized)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO user_ratings (user_id, anime_id, title, image, year, studios, genres, raw_rating, rating_normalized, was_recommended)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(user_id, anime_id) DO UPDATE SET title = excluded.title,
        image = excluded.image,
        year = excluded.year,
@@ -189,6 +190,7 @@ export function saveOrUpdateRating(rating: UserRating) {
        genres = excluded.genres,
        raw_rating = excluded.raw_rating,
        rating_normalized = excluded.rating_normalized,
+       was_recommended = excluded.was_recommended,
        updated_at = CURRENT_TIMESTAMP`
   ).run([
     rating.user_id,
@@ -199,7 +201,8 @@ export function saveOrUpdateRating(rating: UserRating) {
     JSON.stringify(rating.studios || []),
     JSON.stringify(rating.genres || []),
     rating.raw_rating,
-    rating.rating_normalized
+    rating.rating_normalized,
+    rating.was_recommended || false
   ]);
   saveDb();
 }

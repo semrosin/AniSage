@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { NavLink, Navigate, Route, Routes, useNavigate, useParams, useLocation } from 'react-router-dom';
+import { NavLink, Navigate, Route, Routes, useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
 import { getCurrentUser, fetchDiscover, searchAnime, getRatings, saveRating, getRecommendations, getAnimeDetails } from './api.js';
 import AnimeCard from './components/AnimeCard.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
@@ -41,6 +41,8 @@ function Header({ user, handleSearch, searchQuery, setSearchQuery }) {
 
 function AnimePage({ ratings, onRate }) {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const recommended = searchParams.get('recommended') || false;
   const [anime, setAnime] = useState(null);
   const [userRating, setUserRating] = useState(0);
   const [originalRating, setOriginalRating] = useState(0);
@@ -61,7 +63,7 @@ function AnimePage({ ratings, onRate }) {
 
   const handleSaveRating = async () => {
     setSaving(true);
-    await onRate(parseInt(id), userRating);
+    await onRate(parseInt(id), userRating, recommended);
     setOriginalRating(userRating);
     setSaving(false);
   };
@@ -171,13 +173,13 @@ function RecommendationsPage({ recommendations, ratings }) {
       )}
 
       {!hasEnoughRatings ? (
-        <section className="anime-list">
-          <p className="app__info">Пожалуйста, оцените ваши первые 5 аниме, чтобы получить рекомендации</p>
+        <section className="app__info-block">
+          <p className="app__info-block__title">Пожалуйста, оцените ваши первые 5 аниме, чтобы получить рекомендации</p>
         </section>
       ) : (
         <section className="anime-list">
           {recommendations.map((anime) => (
-            <AnimeCard key={anime.id} anime={anime} />
+            <AnimeCard key={anime.id} anime={anime} recommendations={true} />
           ))}
       </section>
       )}
@@ -205,7 +207,7 @@ function Footer() {
 
 function PrivateRoute({ allow, redirectTo, authChecked, status, user, children }) {
   if (!authChecked) {
-    return <p className="app__info">Загрузка...</p>;
+    return <p className="app__info-block__title">Думаем над вашими рекомендациями...</p>;
   }
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -276,10 +278,10 @@ function App() {
     }
   }
 
-  async function handleRate(animeId, value) {
+  async function handleRate(animeId, value, was_recommended = false) {
     setError('');
     try {
-      await saveRating(animeId, value);
+      await saveRating(animeId, value, was_recommended);
       await loadRatings();
     } catch (err) {
       setError('Не удалось сохранить оценку.');

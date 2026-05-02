@@ -115,10 +115,16 @@ a {
   }
 }
 
-.app__info,
+.app__info-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.app__info-block__title,
 .app__error {
   margin: 20px 0;
-  color: #e7e7ff;
+  color: #adadc2;
 }
 
 .app__error {
@@ -235,11 +241,11 @@ a {
 
 .anime-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 180px));
   gap: 1.25rem;
 
   @media screen and (max-width: 768px) {
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     row-gap: 1rem;
     column-gap: 1rem;
   }
@@ -256,7 +262,7 @@ a {
   }
 
   @media screen and (max-width: 300px) {
-    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     row-gap: 0.4rem;
     column-gap: 0.4rem;
   }
@@ -296,7 +302,7 @@ a {
       height: 16rem;
     }
     @media (max-width: 380px) {
-      height: 13rem;
+      height: 14rem;
     }
   }
 

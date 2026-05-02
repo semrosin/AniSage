@@ -19,6 +19,7 @@ export interface UserRating {
   raw_rating: number;
   rating_normalized: number;
   updated_at?: string;
+  was_recommended?: boolean;
 }
 
 export interface UserMetrics {

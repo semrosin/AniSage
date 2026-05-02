@@ -49,10 +49,10 @@ export function getRatings() {
   return request('/ratings');
 }
 
-export function saveRating(animeId, rating) {
+export function saveRating(animeId, rating, was_recommended = false) {
   return request('/ratings', {
     method: 'POST',
-    body: JSON.stringify({ animeId, rating })
+    body: JSON.stringify({ animeId, rating, was_recommended })
   });
 }
 

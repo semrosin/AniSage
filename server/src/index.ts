@@ -158,10 +158,11 @@ app.get('/ratings', requireAuth, (req, res) => {
 });
 
 app.post('/ratings', requireAuth, async (req, res) => {
-  const { animeId, rating } = req.body as { animeId: number; rating: number };
+  const { animeId, rating, was_recommended } = req.body as { animeId: number; rating: number; was_recommended: boolean };
   if (!animeId || typeof rating !== 'number') {
     return res.status(400).json({ error: 'animeId and rating are required' });
   }
+  console.log(`Saving rating for user ${req.session.userId}: anime ${animeId} = ${rating}, recommended: ${was_recommended}`);
 
   try {
     const anime = await fetchAnimeById(animeId);
@@ -176,7 +177,8 @@ app.post('/ratings', requireAuth, async (req, res) => {
       studios: anime.studios,
       genres: anime.genres,
       raw_rating: rating,
-      rating_normalized: normalized
+      rating_normalized: normalized,
+      was_recommended: was_recommended,
     };
     saveOrUpdateRating(ratingRow);
     const ratings = getRatingsByUser(userId);
