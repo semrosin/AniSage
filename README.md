@@ -93,3 +93,26 @@ $$
 
 ---
 **Если у вас есть идеи по улучшению этого алгоритма / сомнения в его работоспособности, я буду рад видеть вас в Discussions**
+
+## Запуск проекта
+
+1. Установите зависимости для сервера и фронтенда:
+
+```bash
+npm install
+npm --prefix server install
+npm --prefix client install
+```
+
+2. Настройте Yandex OAuth в `server/.env` на основе `server/.env.example`.
+
+3. Запустите сервис:
+
+```bash
+npm run dev
+```
+
+4. Откройте в браузере:
+
+- фронтенд: `http://localhost:5173`
+- сервер: `http://localhost:4000`

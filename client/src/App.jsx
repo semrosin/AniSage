@@ -1,0 +1,385 @@
+import React, { useEffect, useState } from 'react';
+import { NavLink, Navigate, Route, Routes, useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
+import { getCurrentUser, fetchDiscover, searchAnime, getRatings, saveRating, getRecommendations, getAnimeDetails } from './api.js';
+import AnimeCard from './components/AnimeCard.jsx';
+import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
+import { TbBrandYandex } from "react-icons/tb";
+import { CiSearch } from "react-icons/ci";
+import { FaHeart, FaGithub } from "react-icons/fa6";
+import parser from "bbcode-to-react";
+
+function Header({ user, handleSearch, searchQuery, setSearchQuery }) {
+  if (!user) return null;
+  
+  const getPictureUrl = (pictureId) => 
+    `https://avatars.yandex.net/get-yapic/${pictureId}/islands-200`
+
+  return (
+    <header className="app__header">
+      <div>
+        <a href="/" className="app__logo-link">
+          <img className="app__logo app__logo--default" src="/Logo.svg" alt="AniSage" />
+          <img className="app__logo app__logo--rotated" src="/Logo_Rotated.svg" alt="AniSage" />
+        </a>
+      </div>
+      <form className="search-form" onSubmit={handleSearch}>
+          <input
+            className="search-form__field"
+            type="text"
+            placeholder="Найти аниме"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+          />
+          <button className="search-form__button" type="submit">
+            <CiSearch size={20}/>
+          </button>
+      </form>
+      <img className="app__user-avatar" src={getPictureUrl(user.picture)} alt={user.display_name} />
+    </header>
+  );
+}
+
+function AnimePage({ ratings, onRate }) {
+  const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const recommended = searchParams.get('recommended') || false;
+  const [anime, setAnime] = useState(null);
+  const [userRating, setUserRating] = useState(0);
+  const [originalRating, setOriginalRating] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    getAnimeDetails(id).then(data => {
+      setAnime(data);
+      const existingRating = ratings.find(r => r.anime_id == id);
+      if (existingRating) {
+        setUserRating(existingRating.raw_rating);
+        setOriginalRating(existingRating.raw_rating);
+      }
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, [id, ratings]);
+
+  const handleSaveRating = async () => {
+    setSaving(true);
+    await onRate(parseInt(id), userRating, recommended);
+    setOriginalRating(userRating);
+    setSaving(false);
+  };
+
+  const hasChanges = userRating !== originalRating;
+
+  if (loading) {
+    return <p className="app__info-block__title">Загрузка...</p>;
+  }
+
+  if (!anime) {
+    return <p className="app__error">Аниме не найдено</p>;
+  }
+
+  return (
+    <main className="anime-page">
+      <div className="anime-page__poster">
+        <img src={anime.image} alt={anime.title} />
+      </div>
+
+      <div className="anime-page__info">
+        <h1 className="anime-page__title">{anime.title}</h1>
+        
+        <div className="anime-page__meta">
+          <p><strong>Год выпуска</strong> <span>{anime.year || 'Ещё не вышло'}</span></p>
+          <p><strong>Жанры</strong> <span>{anime.genres?.join(', ') || '—'}</span></p>
+          <p><strong>Студии</strong> <span>{anime.studios?.join(', ') || '—'}</span></p>
+          <p><strong>Средняя оценка</strong> <span>{Number(anime.score)?.toFixed(1) || '—'}</span></p>
+          <p><strong>Эпизодов</strong> <span>{anime.episodes || '—'}</span></p>
+        </div>
+
+        <div className="anime-page__description">
+          <p><strong>Описание</strong></p>
+          <p>{parser.toReact(anime.description || "—")}</p>
+        </div>
+
+        <div className="anime-page__rating">
+          <div className="stars">
+            {Array.from({ length: 10 }, (_, i) => i + 1).map(star => (
+              <button
+                key={star}
+                className={`star ${star <= userRating ? 'star--active' : ''}`}
+                onClick={() => setUserRating(star)}
+              >
+                ★
+              </button>
+            ))}
+          </div>
+          
+          <button
+            className="anime-page__save-btn"
+            disabled={!hasChanges || saving}
+            onClick={handleSaveRating}
+          >
+            {saving ? 'Сохранение...' : 'Оценить'}
+          </button>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function LoginPage({ error }) {
+  return (
+    <div className="app app--centered">
+      <section className="login-card">
+        <h1 className="login-card__title">Войдите с помощью</h1>
+        <div className='login-card__buttons'>
+          <a className="login-card__button" href="/auth/login">
+            <TbBrandYandex size={25}/>
+          </a>
+        </div>
+        {error && <p className="login-card__error">{error}</p>}
+      </section>
+    </div>
+  );
+}
+
+function SearchPage({ searchQuery, searchResults, discover }) {
+  const isSearching = searchQuery && searchResults.length === 0;
+
+  return (
+    <main className="search-page">
+      {searchQuery && (
+        <h2 className="search-page__title">Результаты поиска по запросу "{searchQuery}"</h2>
+      )}
+      <section className="anime-list">
+        {isSearching ? (
+          <p className="app__info-block__title">Загрузка...</p>
+        ) : (
+          (searchResults.length ? searchResults : discover).map((anime) => (
+            <AnimeCard key={anime.id} anime={anime} />
+          ))
+        )}
+      </section>
+    </main>
+  );
+}
+
+function RecommendationsPage({ recommendations, ratings }) {
+  const hasEnoughRatings = ratings.length >= 5;
+  
+  return (
+    <main className="recommendations-page">
+      {hasEnoughRatings && (
+        <h2 className="recommendations-page__title">Ваши рекомендации</h2>
+      )}
+
+      {!hasEnoughRatings ? (
+        <section className="app__info-block__title-block">
+          <p className="app__info-block__title-block__title">Пожалуйста, оцените ваши первые 5 аниме, чтобы получить рекомендации</p>
+        </section>
+      ) : (
+        <section className="anime-list">
+          {recommendations.map((anime) => (
+            <AnimeCard key={anime.id} anime={anime} recommendations={true} />
+          ))}
+      </section>
+      )}
+    </main>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="footer">
+      <div className="footer-left">
+        <NavLink to="/privacy" className="footer-link">Политика конфиденциальности</NavLink>
+      </div>
+      <div className="footer-right">
+        <a href="https://github.com/semrosin/AniSage" target="_blank" rel="noopener noreferrer" className="footer-icon">
+          <FaGithub size={22} />
+        </a>
+        <a href="https://boosty.to/semrosin/donate" target="_blank" rel="noopener noreferrer" className="footer-icon footer-icon--heart">
+          <FaHeart size={22} />
+        </a>
+      </div>
+    </footer>
+  );
+}
+
+function PrivateRoute({ allow, redirectTo, authChecked, status, user, children }) {
+  if (!authChecked) {
+    return <p className="app__info-block__title-block__title">Загрузка...</p>;
+  }
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  if (!allow) {
+    return <Navigate to={redirectTo} replace />;
+  }
+  return children;
+}
+
+function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  const [user, setUser] = useState(null);
+  const [ratings, setRatings] = useState([]);
+  const [discover, setDiscover] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
+  const [searchResults, setSearchResults] = useState([]);
+  const [status, setStatus] = useState('loading');
+  const [error, setError] = useState('');
+  const [authChecked, setAuthChecked] = useState(false);
+
+  const urlParams = new URLSearchParams(location.search);
+  const searchQuery = urlParams.get('q') || '';
+
+  useEffect(() => {
+    loadUser();
+  }, []);
+
+  async function loadUser() {
+    try {
+      const response = await getCurrentUser();
+      if (response.user) {
+        setUser(response.user);
+        await loadRatings();
+      } else {
+        setStatus('ready');
+      }
+    } catch (err) {
+      setStatus('ready');
+    } finally {
+      setAuthChecked(true);
+    }
+  }
+
+  async function loadRatings() {
+    try {
+      const response = await getRatings();
+      setRatings(response.ratings);
+      if (response.ratings.length < 5) {
+        const discoverResponse = await fetchDiscover();
+        setDiscover(discoverResponse.results);
+        return;
+      }
+      await loadRecommendations();
+    } finally {
+      setStatus('recommendations');
+    }
+  }
+
+  async function loadRecommendations() {
+    try {
+      const response = await getRecommendations();
+      setRecommendations(response.recommendations);
+    } finally {
+      setStatus('recommendations');
+    }
+  }
+
+  async function handleRate(animeId, value, was_recommended = false) {
+    setError('');
+    try {
+      await saveRating(animeId, value, was_recommended);
+      await loadRatings();
+    } catch (err) {
+      setError('Не удалось сохранить оценку.');
+    }
+  }
+
+  function setSearchQuery(value) {
+    const params = new URLSearchParams(location.search);
+    if (value) {
+      params.set('q', value);
+    } else {
+      params.delete('q');
+    }
+    navigate(`${location.pathname}?${params.toString()}`, { replace: true });
+  }
+
+  function handleSearch(event) {
+    event.preventDefault();
+    if (!searchQuery.trim()) return;
+    navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
+  }
+
+  useEffect(() => {
+    if (location.pathname === '/search' && searchQuery.trim()) {
+      setSearchResults([]);
+      searchAnime(searchQuery)
+        .then(response => setSearchResults(response.results))
+        .catch(() => setError('Поиск не удался. Попробуйте другой запрос.'));
+    }
+  }, [searchQuery, location.pathname]);
+
+  const targetRoute = !user ? '/login' : '/recommendations';
+
+  return (
+    <>
+      <Header
+        user={user}
+        searchQuery={searchQuery} 
+        setSearchQuery={setSearchQuery}
+        handleSearch={handleSearch}
+      />
+      <div className="app">
+        {error && <p className="app__error">{error}</p>}
+        <Routes>
+          <Route
+            path="/"
+            element={
+              !authChecked ? (
+                <p className="app__info-block__title">Думаем над вашими рекомендациями...</p>
+              ) : !user ? (
+                <Navigate to="/login" replace />
+              ) : (
+                <Navigate to={targetRoute} replace />
+              )
+            }
+          />
+          <Route path="/login" element={user ? <Navigate to={targetRoute} replace /> : <LoginPage error={error} />} />
+          <Route
+            path={`/search`}
+            element={
+              <PrivateRoute allow={true} redirectTo="/login" authChecked={authChecked} status={status} user={user}>
+                <SearchPage
+                  searchQuery={searchQuery}
+                  searchResults={searchResults}
+                  discover={discover}
+                />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/recommendations"
+            element={
+              <PrivateRoute allow={true} redirectTo="/login" authChecked={authChecked} status={status} user={user}>
+                <RecommendationsPage 
+                  recommendations={recommendations}
+                  ratings={ratings}
+                />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/ani/:id"
+            element={
+              <PrivateRoute allow={true} redirectTo="/login" authChecked={authChecked} status={status} user={user}>
+                <AnimePage
+                  ratings={ratings}
+                  onRate={handleRate}
+                />
+              </PrivateRoute>
+            }
+          />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+      <Footer />
+    </>
+  );
+}
+
+export default App;

@@ -1,0 +1,1 @@
+{"root":["./src/db.ts","./src/express-session.d.ts","./src/index.ts","./src/recommendation.ts","./src/shikimori.ts","./src/types.ts"],"version":"5.9.3"}
