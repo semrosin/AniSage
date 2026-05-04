@@ -3,6 +3,9 @@ import session from 'express-session';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import axios from 'axios';
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
 import dotenv from 'dotenv';
 import {
   initDb,
@@ -34,6 +37,7 @@ if (!YANDEX_CLIENT_ID || !YANDEX_CLIENT_SECRET) {
 let similarityMatrix: Record<string, Record<string, number>> = {};
 const app = express();
 
+app.enable('trust proxy');
 app.use(cors({ origin: CLIENT_URL, credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
@@ -44,17 +48,68 @@ app.use(
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'none',
       maxAge: 1000 * 60 * 60 * 24 * 7
     }
   })
 );
 
 function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
-  if (!req.session || !req.session.userId) {
+    if (!req.session || !req.session.userId) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   next();
 }
+
+function getFileName(url: string) {
+  return crypto.createHash('md5').update(url).digest('hex') + '.jpg';
+}
+
+app.get('/api/image', async (req, res) => {
+  const url = decodeURIComponent(req.query.url as string);
+
+  if (!url) {
+    return res.status(400).send('No URL');
+  }
+  
+  const dir = path.join(__dirname, 'uploads/images');
+
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  const fileName = getFileName(url);
+  const filePath = path.join(dir, fileName);
+
+  if (fs.existsSync(filePath)) {
+    return res.sendFile(filePath);
+  }
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0',
+        'Referer': 'https://shikimori.one/'
+      }
+    });
+
+    if (!response.ok) {
+      return res.status(500).send('Failed to fetch image');
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+
+    fs.writeFileSync(filePath, buffer);
+
+    res.set('Content-Type', response.headers.get('content-type') || 'image/jpeg');
+    res.send(buffer);
+
+  } catch (err) {
+    res.status(500).send('Error loading image');
+  }
+});
+
+app.use('/images', express.static(path.join(__dirname, 'uploads/images')));
 
 app.get('/auth/login', (req, res) => {
   const callbackUrl = `${BASE_URL}/auth/yandex/callback`;

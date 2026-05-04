@@ -81,7 +81,7 @@ function AnimePage({ ratings, onRate }) {
   return (
     <main className="anime-page">
       <div className="anime-page__poster">
-        <img src={anime.image} alt={anime.title} />
+        <img src={`/api/image?url=${encodeURIComponent(anime.image)}`} alt={anime.title} />
       </div>
 
       <div className="anime-page__info">

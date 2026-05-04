@@ -40,7 +40,7 @@ async function axiosGetWithRetry<T>(url: string, params?: any): Promise<T> {
   let lastError: unknown;
   for (let attempt = 0; attempt < MAX_FETCH_RETRIES; attempt++) {
     try {
-      const response = await axios.get<T>(url, { params });
+      const response = await axios.get<T>(url, { params, headers: { 'User-Agent': 'AniSage/1.0 (https://anisage.ru)' }});
       return response.data;
     } catch (error: unknown) {
       lastError = error;
@@ -74,14 +74,17 @@ function normalizeApiAnime(item: any): AnimeSummary {
     id: item.id,
     title: item.russian || item.name || String(item.id),
     image,
-    year: item.year || (item.released_on ? parseInt(item.released_on.substring(0, 4)) : undefined),
+    year: item.year || (item.aired_on ? parseInt(item.aired_on.substring(0, 4)) : undefined),
     genres,
     studios,
     score: item.score || 0,
     episodes: item.episodes || null,
     status: item.status || null,
     country: item.country || null,
-    description: item.description || '',
+    description: item.description
+      ?.replace(/\[.*?\]/g, '') // убирает все [теги]
+      ?.replace(/\n+/g, '\n')   // нормализует переносы
+      ?.trim() || '',
   };
 }
 
