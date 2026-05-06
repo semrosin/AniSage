@@ -3,6 +3,7 @@ import { NavLink, Navigate, Route, Routes, useNavigate, useParams, useLocation, 
 import { getCurrentUser, fetchDiscover, searchAnime, getRatings, saveRating, getRecommendations, getAnimeDetails } from './api.js';
 import AnimeCard from './components/AnimeCard.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
+import RatingsPage from './pages/RatingsPage.jsx';
 import { TbBrandYandex } from "react-icons/tb";
 import { CiSearch } from "react-icons/ci";
 import { FaHeart, FaGithub } from "react-icons/fa6";
@@ -34,7 +35,9 @@ function Header({ user, handleSearch, searchQuery, setSearchQuery }) {
             <CiSearch size={20}/>
           </button>
       </form>
-      <img className="app__user-avatar" src={getPictureUrl(user.picture)} alt={user.display_name} />
+      <a href="/userratings" className="app__user-link">
+        <img className="app__user-avatar" src={getPictureUrl(user.picture)} alt={user.display_name} />
+      </a>
     </header>
   );
 }
@@ -150,12 +153,12 @@ function SearchPage({ searchQuery, searchResults, discover }) {
       {searchQuery && (
         <h2 className="search-page__title">Результаты поиска по запросу "{searchQuery}"</h2>
       )}
-      <section className="anime-list">
+      <section className="ratings-page__list">
         {isSearching ? (
           <p className="app__info-block__title">Загрузка...</p>
         ) : (
           (searchResults.length ? searchResults : discover).map((anime) => (
-            <AnimeCard key={anime.id} anime={anime} />
+            <AnimeCard key={anime.id} anime={anime} withRating={true} />
           ))
         )}
       </section>
@@ -179,7 +182,7 @@ function RecommendationsPage({ recommendations, ratings }) {
       ) : (
         <section className="anime-list">
           {recommendations.map((anime) => (
-            <AnimeCard key={anime.id} anime={anime} recommendations={true} />
+            <AnimeCard key={anime.id} anime={anime} recommendations={true} withRating={false} />
           ))}
       </section>
       )}
@@ -347,6 +350,18 @@ function App() {
                   searchQuery={searchQuery}
                   searchResults={searchResults}
                   discover={discover}
+                />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/userratings"
+            element={
+              <PrivateRoute allow={true} redirectTo="/login" authChecked={authChecked} status={status} user={user}>
+                <RatingsPage
+                  user={user}
+                  ratings={ratings}
+                  onRate={handleRate}
                 />
               </PrivateRoute>
             }
