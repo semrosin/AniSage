@@ -44,11 +44,15 @@ async function axiosGetWithRetry<T>(url: string, params?: any): Promise<T> {
       return response.data;
     } catch (error: unknown) {
       lastError = error;
-      if (axios.isAxiosError(error) && error.response?.status === 429) {
-        const delay = FETCH_RETRY_DELAY_MS * (attempt + 1);
-        console.warn(`Shikimori 429, retry after ${delay}ms`);
-        await sleep(delay);
-        continue;
+      if (axios.isAxiosError(error)) {
+        const isRateLimit = error.response?.status === 429;
+        const isNetworkError = !error.response && (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT' || error.code === 'ECONNABORTED');
+        if (isRateLimit || isNetworkError) {
+          const delay = FETCH_RETRY_DELAY_MS * (attempt + 1);
+          console.warn(`Shikimori ${error.code || error.response?.status}, retry after ${delay}ms (attempt ${attempt + 1}/${MAX_FETCH_RETRIES})`);
+          await sleep(delay);
+          continue;
+        }
       }
       throw error;
     }
@@ -128,26 +132,25 @@ export async function getEnoughCandidates(userRatedIds: Set<number>, target = 48
   const result: AnimeSummary[] = [];
 
   while (result.length < target) {
-    const data = await axios.get('https://shikimori.one/api/animes', {
-      params: {
+    try {
+      const data = await fetchAnimeList({
         order: 'popularity',
         limit: 50,
         page
-      },
-      headers: {
-        'User-Agent': 'AniSage/1.0'
-      }
-    });
+      });
 
-    if (!data.data.length) break;
+      if (!data.length) break;
 
-    const filtered = data.data.filter((anime: any) =>
-      !userRatedIds.has(anime.id)
-    );
-
-    result.push(...filtered.map(normalizeApiAnime));
-
-    page++;
+      const filtered = data.filter((anime) =>
+        !userRatedIds.has(anime.id)
+      );
+      result.push(...filtered);
+      page++;
+    } catch (error) {
+      console.warn(`Shikimori fetch page ${page} failed, retrying...`, error);
+      await sleep(200);
+      continue;
+    }
 
     if (page > 10) break;
   }
