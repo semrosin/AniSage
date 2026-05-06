@@ -35,7 +35,7 @@ function Header({ user, handleSearch, searchQuery, setSearchQuery }) {
             <CiSearch size={20}/>
           </button>
       </form>
-      <a href="/userratings" className="app__user-link">
+      <a href="/userrates" className="app__user-link">
         <img className="app__user-avatar" src={getPictureUrl(user.picture)} alt={user.display_name} />
       </a>
     </header>
@@ -355,7 +355,7 @@ function App() {
             }
           />
           <Route
-            path="/userratings"
+            path="/userrates"
             element={
               <PrivateRoute allow={true} redirectTo="/login" authChecked={authChecked} status={status} user={user}>
                 <RatingsPage
