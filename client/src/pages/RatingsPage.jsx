@@ -17,13 +17,33 @@ function ratingToAnime(rating) {
 }
 
 export default function RatingsPage({ user, ratings, onRate }) {
+  if (!user) {
+    return (
+      <main className="ratings-page">
+        <p className="app__info-block__title">Загрузка...</p>
+      </main>
+    );
+  }
+
+  const avatarSrc = user.is_guest
+    ? '/images/default-avatar-anime-girl.jpg'
+    : getPictureUrl(user.picture);
+
+  const displayName = user.display_name;
+
   return (
     <main className="ratings-page">
       <div className="ratings-page__header">
-        <img className="ratings-page__avatar" src={getPictureUrl(user.picture)} alt={user.display_name} />
+        <img className="ratings-page__avatar" src={avatarSrc} alt={displayName} />
         <div className="ratings-page__user-info">
-          <h1 className="ratings-page__name">{user.display_name}</h1>
-          <p className="ratings-page__email">{user.email}</p>
+          <h1 className="ratings-page__name">{displayName}</h1>
+          {user.is_guest ? (
+            <p className="ratings-page__email">
+              <a href="/auth/login" className="ratings-page__login-link">Авторизуйтесь</a>, чтобы сохранить свои оценки
+            </p>
+          ) : (
+            <p className="ratings-page__email">{user.email}</p>
+          )}
         </div>
       </div>
       <section className="ratings-page__list">

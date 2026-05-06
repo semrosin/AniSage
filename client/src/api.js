@@ -18,6 +18,17 @@ export function getCurrentUser() {
   return request('/auth/me');
 }
 
+export function createGuest() {
+  return request('/auth/guest', { method: 'POST' });
+}
+
+export function restoreGuest(login) {
+  return request('/auth/guest/restore', {
+    method: 'POST',
+    body: JSON.stringify({ login })
+  });
+}
+
 function mapAnimeFields(item) {
   return {
     id: item.anime_id || item.id,

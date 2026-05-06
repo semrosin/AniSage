@@ -12,7 +12,7 @@ export default defineConfig({
       '/anime': 'http://localhost:4000',
       '/ratings': 'http://localhost:4000',
       '/api': 'http://localhost:4000',
-      '/system': 'http://localhost:4000'
+      '/system': 'http://localhost:4000',
     }
   },
   build: {

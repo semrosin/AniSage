@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, Navigate, Route, Routes, useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
-import { getCurrentUser, fetchDiscover, searchAnime, getRatings, saveRating, getRecommendations, getAnimeDetails } from './api.js';
+import { getCurrentUser, createGuest, restoreGuest, fetchDiscover, searchAnime, getRatings, saveRating, getRecommendations, getAnimeDetails } from './api.js';
 import AnimeCard from './components/AnimeCard.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
 import RatingsPage from './pages/RatingsPage.jsx';
@@ -14,6 +14,10 @@ function Header({ user, handleSearch, searchQuery, setSearchQuery }) {
   
   const getPictureUrl = (pictureId) => 
     `https://avatars.yandex.net/get-yapic/${pictureId}/islands-200`
+
+  const avatarSrc = user.is_guest
+    ? '/images/default-avatar-anime-girl.jpg'
+    : getPictureUrl(user.picture);
 
   return (
     <header className="app__header">
@@ -36,7 +40,7 @@ function Header({ user, handleSearch, searchQuery, setSearchQuery }) {
           </button>
       </form>
       <a href="/userrates" className="app__user-link">
-        <img className="app__user-avatar" src={getPictureUrl(user.picture)} alt={user.display_name} />
+        <img className="app__user-avatar" src={avatarSrc} alt={user.display_name} />
       </a>
     </header>
   );
@@ -145,7 +149,7 @@ function LoginPage({ error }) {
   );
 }
 
-function SearchPage({ searchQuery, searchResults, discover }) {
+function SearchPage({ searchQuery, searchResults, discover, onRate }) {
   const isSearching = searchQuery && searchResults.length === 0;
 
   return (
@@ -158,7 +162,7 @@ function SearchPage({ searchQuery, searchResults, discover }) {
           <p className="app__info-block__title">Загрузка...</p>
         ) : (
           (searchResults.length ? searchResults : discover).map((anime) => (
-            <AnimeCard key={anime.id} anime={anime} withRating={true} />
+            <AnimeCard key={anime.id} anime={anime} withRating={true} onRate={onRate} />
           ))
         )}
       </section>
@@ -208,19 +212,6 @@ function Footer() {
   );
 }
 
-function PrivateRoute({ allow, redirectTo, authChecked, status, user, children }) {
-  if (!authChecked) {
-    return <p className="app__info-block__title-block__title">Загрузка...</p>;
-  }
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-  if (!allow) {
-    return <Navigate to={redirectTo} replace />;
-  }
-  return children;
-}
-
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -247,12 +238,45 @@ function App() {
       if (response.user) {
         setUser(response.user);
         await loadRatings();
-      } else {
-        setStatus('ready');
+        setAuthChecked(true);
+        return;
       }
+
+      // No active session — try to restore guest from localStorage
+      const savedLogin = localStorage.getItem('guestLogin');
+      if (savedLogin) {
+        try {
+          const restoreResponse = await restoreGuest(savedLogin);
+          if (restoreResponse.user) {
+            setUser(restoreResponse.user);
+            await loadRatings();
+            setAuthChecked(true);
+            return;
+          }
+        } catch (e) {
+          // restore failed, will create new guest
+        }
+      }
+
+      // No saved guest or restore failed — create new guest
+      try {
+        const guestResponse = await createGuest();
+        setUser(guestResponse.user);
+        // Save guest login to localStorage for session persistence across reloads
+        if (guestResponse.guestLogin) {
+          localStorage.setItem('guestLogin', guestResponse.guestLogin);
+        }
+      } catch (err) {
+        setError('Не удалось создать гостевую сессию');
+        setAuthChecked(true);
+        setStatus('ready');
+        return;
+      }
+
+      await loadRatings();
+      setAuthChecked(true);
     } catch (err) {
       setStatus('ready');
-    } finally {
       setAuthChecked(true);
     }
   }
@@ -316,7 +340,17 @@ function App() {
     }
   }, [searchQuery, location.pathname]);
 
-  const targetRoute = !user ? '/login' : '/recommendations';
+  if (!authChecked) {
+    return (
+      <>
+        <Header user={null} />
+        <div className="app">
+          <p className="app__info-block__title">Загрузка...</p>
+        </div>
+        <Footer />
+      </>
+    );
+  }
 
   return (
     <>
@@ -332,60 +366,62 @@ function App() {
           <Route
             path="/"
             element={
-              !authChecked ? (
-                <p className="app__info-block__title">Думаем над вашими рекомендациями...</p>
-              ) : !user ? (
-                <Navigate to="/login" replace />
+              !user ? (
+                <p className="app__info-block__title">Загрузка...</p>
               ) : (
-                <Navigate to={targetRoute} replace />
+                <Navigate to={status === 'recommendations' ? '/recommendations' : '/discover'} replace />
               )
             }
           />
-          <Route path="/login" element={user ? <Navigate to={targetRoute} replace /> : <LoginPage error={error} />} />
+          <Route path="/login" element={<LoginPage error={error} />} />
+          <Route
+            path="/discover"
+            element={
+              <SearchPage
+                searchQuery={''}
+                searchResults={[]}
+                discover={discover}
+                onRate={handleRate}
+              />
+            }
+          />
           <Route
             path={`/search`}
             element={
-              <PrivateRoute allow={true} redirectTo="/login" authChecked={authChecked} status={status} user={user}>
-                <SearchPage
-                  searchQuery={searchQuery}
-                  searchResults={searchResults}
-                  discover={discover}
-                />
-              </PrivateRoute>
+              <SearchPage
+                searchQuery={searchQuery}
+                searchResults={searchResults}
+                discover={discover}
+                onRate={handleRate}
+              />
             }
           />
           <Route
             path="/userrates"
             element={
-              <PrivateRoute allow={true} redirectTo="/login" authChecked={authChecked} status={status} user={user}>
-                <RatingsPage
-                  user={user}
-                  ratings={ratings}
-                  onRate={handleRate}
-                />
-              </PrivateRoute>
+              <RatingsPage
+                user={user}
+                ratings={ratings}
+                onRate={handleRate}
+              />
             }
           />
           <Route
             path="/recommendations"
             element={
-              <PrivateRoute allow={true} redirectTo="/login" authChecked={authChecked} status={status} user={user}>
-                <RecommendationsPage 
-                  recommendations={recommendations}
-                  ratings={ratings}
-                />
-              </PrivateRoute>
+              <RecommendationsPage 
+                recommendations={recommendations}
+                ratings={ratings}
+              />
             }
           />
           <Route
             path="/ani/:id"
             element={
-              <PrivateRoute allow={true} redirectTo="/login" authChecked={authChecked} status={status} user={user}>
-                <AnimePage
-                  ratings={ratings}
-                  onRate={handleRate}
-                />
-              </PrivateRoute>
+              <AnimePage
+                ratings={ratings}
+                onRate={handleRate}
+              />
             }
           />
           <Route path="/privacy" element={<PrivacyPolicy />} />

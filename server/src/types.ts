@@ -1,10 +1,11 @@
 export interface User {
   id: number;
-  yandex_id: string;
+  yandex_id?: string | null;
   login: string;
   display_name: string;
-  email?: string;
-  picture?: string;
+  email?: string | null;
+  picture?: string | null;
+  is_guest?: boolean;
 }
 
 export interface UserRating {

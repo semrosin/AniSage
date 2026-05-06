@@ -38,9 +38,14 @@ function sleep(ms: number) {
 
 async function axiosGetWithRetry<T>(url: string, params?: any): Promise<T> {
   let lastError: unknown;
+  const axiosConfig: Record<string, any> = {
+    params,
+    headers: { 'User-Agent': 'AniSage/1.0 (https://anisage.ru)' },
+    timeout: 15000,
+  };
   for (let attempt = 0; attempt < MAX_FETCH_RETRIES; attempt++) {
     try {
-      const response = await axios.get<T>(url, { params, headers: { 'User-Agent': 'AniSage/1.0 (https://anisage.ru)' }});
+      const response = await axios.get<T>(url, axiosConfig);
       return response.data;
     } catch (error: unknown) {
       lastError = error;

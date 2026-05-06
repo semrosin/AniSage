@@ -520,6 +520,16 @@ a {
     font-size: 0.95rem;
   }
 
+  &__login-link {
+    color: #E46AE6;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+
+    &:hover {
+      color: #f7f7fb;
+    }
+  }
+
   &__list {
     display: grid;
     grid-template-columns: 1fr 1fr;

@@ -44,11 +44,12 @@ export async function initDb() {
     execute(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY,
-        yandex_id TEXT UNIQUE NOT NULL,
+        yandex_id TEXT UNIQUE,
         login TEXT,
         display_name TEXT,
         email TEXT,
         picture TEXT,
+        is_guest INTEGER DEFAULT 0,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -164,19 +165,79 @@ export function findUserByYandexId(yandexId: string): User | undefined {
 }
 
 export function findUserById(id: number): User | undefined {
-  return queryGet('SELECT * FROM users WHERE id = ?', [id]);
+  const row = queryGet('SELECT * FROM users WHERE id = ?', [id]);
+  if (!row) return undefined;
+  return {
+    ...row,
+    is_guest: row.is_guest === 1
+  };
+}
+
+export function findUserByLogin(login: string): User | undefined {
+  const row = queryGet('SELECT * FROM users WHERE login = ?', [login]);
+  if (!row) return undefined;
+  return {
+    ...row,
+    is_guest: row.is_guest === 1
+  };
 }
 
 export function createUser(user: Omit<User, 'id'>): User {
-  const result = db.prepare('INSERT INTO users (yandex_id, login, display_name, email, picture) VALUES (?, ?, ?, ?, ?)').run([
-    user.yandex_id,
-    user.login,
-    user.display_name,
+  const result = db.prepare('INSERT INTO users (yandex_id, login, display_name, email, picture, is_guest) VALUES (?, ?, ?, ?, ?, ?)').run([
+    user.yandex_id || null,
+    user.login || '',
+    user.display_name || '',
     user.email || null,
-    user.picture || null
+    user.picture || null,
+    (user as any).is_guest ? 1 : 0
   ]);
   saveDb();
   return { id: Number(result.lastInsertRowid), ...user };
+}
+
+export function createGuestUser(): User {
+  const guestId = 'guest_' + Math.random().toString(36).substring(2, 12);
+  return createUser({
+    yandex_id: null,
+    login: guestId,
+    display_name: guestId,
+    email: null,
+    picture: null,
+    is_guest: true
+  } as any);
+}
+
+export function transferRatings(fromUserId: number, toUserId: number) {
+  db.run('BEGIN TRANSACTION');
+  // Update ratings: change user_id from guest to real user, handling conflicts
+  const ratings = getRatingsByUser(fromUserId);
+  for (const rating of ratings) {
+    // Try to insert, on conflict (already rated by target user) skip
+    try {
+      db.prepare(
+        `INSERT OR IGNORE INTO user_ratings (user_id, anime_id, title, image, year, studios, genres, raw_rating, rating_normalized, was_recommended)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run([
+        toUserId,
+        rating.anime_id,
+        rating.title,
+        rating.image || null,
+        rating.year || null,
+        JSON.stringify(rating.studios || []),
+        JSON.stringify(rating.genres || []),
+        rating.raw_rating,
+        rating.rating_normalized,
+        rating.was_recommended || false
+      ]);
+    } catch (e) {
+      // ignore conflict
+    }
+  }
+  // Delete old guest ratings that were transferred
+  db.prepare('DELETE FROM user_ratings WHERE user_id = ? AND anime_id IN (SELECT anime_id FROM user_ratings WHERE user_id = ?)')
+    .run([fromUserId, toUserId]);
+  db.run('COMMIT');
+  saveDb();
 }
 
 export function saveOrUpdateRating(rating: UserRating) {
