@@ -106,6 +106,10 @@ function columnExists(table: string, column: string) {
   return queryAll(`PRAGMA table_info(${table})`).some((row: any) => row.name === column);
 }
 
+function columnInfo(table: string, column: string) {
+  return queryAll(`PRAGMA table_info(${table})`).find((row: any) => row.name === column);
+}
+
 function addColumnIfMissing(table: string, column: string, definition: string) {
   if (!columnExists(table, column)) {
     execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
@@ -127,6 +131,40 @@ function migrateTableColumns() {
   addColumnIfMissing('user_ratings', 'genres', 'TEXT');
   addColumnIfMissing('user_ratings', 'updated_at', 'TEXT');
   addColumnIfMissing('user_ratings', 'was_recommended', 'BOOLEAN DEFAULT FALSE');
+}
+
+function migrateUsersConstraints() {
+  const yandexIdColumn = columnInfo('users', 'yandex_id');
+  if (!yandexIdColumn || Number(yandexIdColumn.notnull) === 0) {
+    return;
+  }
+
+  try {
+    db.run('BEGIN TRANSACTION');
+    execute(`
+      CREATE TABLE users_migrated (
+        id INTEGER PRIMARY KEY,
+        yandex_id TEXT UNIQUE,
+        login TEXT,
+        display_name TEXT,
+        email TEXT,
+        picture TEXT,
+        is_guest INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    execute(`
+      INSERT INTO users_migrated (id, yandex_id, login, display_name, email, picture, is_guest, created_at)
+      SELECT id, yandex_id, login, display_name, email, picture, COALESCE(is_guest, 0), created_at
+      FROM users
+    `);
+    execute('DROP TABLE users');
+    execute('ALTER TABLE users_migrated RENAME TO users');
+    db.run('COMMIT');
+  } catch (error) {
+    db.run('ROLLBACK');
+    throw error;
+  }
 }
 
 function migrateAuthIdentities() {
@@ -151,6 +189,7 @@ export async function initDb() {
 
   createSchema();
   migrateTableColumns();
+  migrateUsersConstraints();
   migrateAuthIdentities();
   saveDb();
   await seedStudios();
