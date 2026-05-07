@@ -155,9 +155,9 @@ function RatingRequirementNotice({ ratingsCount }) {
   const ratingsLeft = Math.max(MIN_RATINGS_FOR_RECOMMENDATIONS - ratingsCount, 0);
 
   return (
-    <section className="app__info-block__title-block">
-      <p className="app__info-block__title-block__title">
-        Пожалуйста, оцените ваши первые {MIN_RATINGS_FOR_RECOMMENDATIONS} аниме, чтобы получить рекомендации. Осталось оценить: {ratingsLeft}.
+    <section className="app__info-block">
+      <p className="app__info-block__title">
+        Вам осталось оценить {ratingsLeft} / {MIN_RATINGS_FOR_RECOMMENDATIONS} аниме, чтобы получить рекомендации!
       </p>
     </section>
   );
