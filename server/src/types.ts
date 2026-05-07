@@ -1,10 +1,20 @@
 export interface User {
   id: number;
-  yandex_id: string;
+  /** Kept for automatic migration/backward compatibility. New auth data lives in auth_identities. */
+  yandex_id?: string | null;
   login: string;
   display_name: string;
-  email?: string;
-  picture?: string;
+  email?: string | null;
+  picture?: string | null;
+  is_guest?: boolean;
+}
+
+export interface AuthIdentity {
+  id?: number;
+  user_id: number;
+  provider: 'guest' | 'yandex';
+  provider_user_id: string;
+  created_at?: string;
 }
 
 export interface UserRating {

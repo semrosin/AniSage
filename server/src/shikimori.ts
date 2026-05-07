@@ -5,6 +5,11 @@ const BASE_URL = 'https://shikimori.one/api';
 const MAX_FETCH_RETRIES = 3;
 const FETCH_RETRY_DELAY_MS = 500;
 const MAX_CONCURRENT_ENRICH = 5;
+const RECOMMENDATION_CANDIDATE_SOURCES = [
+  { order: 'popularity', limit: 25 },
+  { order: 'ranked', limit: 15 },
+  { order: 'ranked_random', limit: 10 },
+];
 
 const animeCache = new Map<number, AnimeSummary>();
 
@@ -38,17 +43,26 @@ function sleep(ms: number) {
 
 async function axiosGetWithRetry<T>(url: string, params?: any): Promise<T> {
   let lastError: unknown;
+  const axiosConfig: Record<string, any> = {
+    params,
+    headers: { 'User-Agent': 'AniSage/1.0 (https://anisage.ru)' },
+    timeout: 15000,
+  };
   for (let attempt = 0; attempt < MAX_FETCH_RETRIES; attempt++) {
     try {
-      const response = await axios.get<T>(url, { params, headers: { 'User-Agent': 'AniSage/1.0 (https://anisage.ru)' }});
+      const response = await axios.get<T>(url, axiosConfig);
       return response.data;
     } catch (error: unknown) {
       lastError = error;
-      if (axios.isAxiosError(error) && error.response?.status === 429) {
-        const delay = FETCH_RETRY_DELAY_MS * (attempt + 1);
-        console.warn(`Shikimori 429, retry after ${delay}ms`);
-        await sleep(delay);
-        continue;
+      if (axios.isAxiosError(error)) {
+        const isRateLimit = error.response?.status === 429;
+        const isNetworkError = !error.response && (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT' || error.code === 'ECONNABORTED');
+        if (isRateLimit || isNetworkError) {
+          const delay = FETCH_RETRY_DELAY_MS * (attempt + 1);
+          console.warn(`Shikimori ${error.code || error.response?.status}, retry after ${delay}ms (attempt ${attempt + 1}/${MAX_FETCH_RETRIES})`);
+          await sleep(delay);
+          continue;
+        }
       }
       throw error;
     }
@@ -123,31 +137,58 @@ export async function fetchPopularAnime(limit = 50): Promise<AnimeSummary[]> {
   });
 }
 
-export async function getEnoughCandidates(userRatedIds: Set<number>, target = 48) {
+function appendUniqueCandidates(
+  targetList: AnimeSummary[],
+  candidates: AnimeSummary[],
+  seenIds: Set<number>,
+  userRatedIds: Set<number>,
+  target: number
+) {
+  for (const anime of candidates) {
+    if (targetList.length >= target) break;
+    if (userRatedIds.has(anime.id) || seenIds.has(anime.id)) continue;
+    seenIds.add(anime.id);
+    targetList.push(anime);
+  }
+}
+
+export async function getEnoughCandidates(userRatedIds: Set<number>, target = 50) {
   let page = 1;
   const result: AnimeSummary[] = [];
+  const seenIds = new Set<number>();
+
+  for (const source of RECOMMENDATION_CANDIDATE_SOURCES) {
+    if (result.length >= target) break;
+    try {
+      const data = await fetchAnimeList({
+        order: source.order,
+        limit: source.limit,
+        page: 1,
+      });
+
+      appendUniqueCandidates(result, data, seenIds, userRatedIds, target);
+    } catch (error) {
+      console.warn(`Shikimori fetch ${source.order} candidates failed, continuing...`, error);
+    }
+  }
 
   while (result.length < target) {
-    const data = await axios.get('https://shikimori.one/api/animes', {
-      params: {
+    try {
+      const data = await fetchAnimeList({
         order: 'popularity',
         limit: 50,
         page
-      },
-      headers: {
-        'User-Agent': 'AniSage/1.0'
-      }
-    });
+      });
 
-    if (!data.data.length) break;
+      if (!data.length) break;
 
-    const filtered = data.data.filter((anime: any) =>
-      !userRatedIds.has(anime.id)
-    );
-
-    result.push(...filtered.map(normalizeApiAnime));
-
-    page++;
+      appendUniqueCandidates(result, data, seenIds, userRatedIds, target);
+      page++;
+    } catch (error) {
+      console.warn(`Shikimori fetch page ${page} failed, retrying...`, error);
+      await sleep(200);
+      continue;
+    }
 
     if (page > 10) break;
   }

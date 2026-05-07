@@ -10,13 +10,16 @@ import dotenv from 'dotenv';
 import {
   initDb,
   createUser,
+  createGuestUser,
   findUserById,
   findUserByYandexId,
+  findUserByAuthIdentity,
   getRatingsByUser,
   getUserMetrics,
   saveOrUpdateRating,
   saveUserMetrics,
-  getStudioSimilarities
+  getStudioSimilarities,
+  transferRatings
 } from './db';
 import { normalizeRating, buildMetricsFromRatings, buildRecommendations } from './recommendation';
 import { fetchAnimeById, searchAnime, fetchPopularAnime, enrichCandidates, getEnoughCandidates } from './shikimori';
@@ -44,26 +47,34 @@ app.use(cookieParser());
 app.use(
   session({
     secret: SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
+    resave: true,
+    saveUninitialized: true,
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'none',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 1000 * 60 * 60 * 24 * 7
     }
   })
 );
 
-function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
-    if (!req.session || !req.session.userId) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-  next();
-}
-
 function getFileName(url: string) {
   return crypto.createHash('md5').update(url).digest('hex') + '.jpg';
+}
+
+// Helper to ensure session has a user (guest or real)
+// Returns userId and ensures the session is saved for new guest users
+async function ensureUser(req: express.Request, res: express.Response): Promise<number> {
+  if (req.session?.userId && findUserById(req.session.userId)) return req.session.userId;
+  const user = createGuestUser();
+  req.session.userId = user.id;
+  // Wait for session to be saved to ensure it persists across requests
+  await new Promise<void>((resolve) => req.session.save(() => resolve()));
+  return user.id;
+}
+
+function isGeneratedGuestLogin(login: string) {
+  return /^user\d{10}$/.test(login);
 }
 
 app.get('/api/image', async (req, res) => {
@@ -110,14 +121,41 @@ app.get('/api/image', async (req, res) => {
 });
 
 app.use('/images', express.static(path.join(__dirname, 'uploads/images')));
+app.use('/public/images', express.static(path.join(__dirname, '..', 'public', 'images')));
 
-app.get('/auth/login', (req, res) => {
-  const callbackUrl = `${BASE_URL}/auth/yandex/callback`;
+app.get('/api/auth/login', (req, res) => {
+  const callbackUrl = `${BASE_URL}/api/auth/yandex/callback`;
   const redirectUrl = `https://oauth.yandex.com/authorize?response_type=code&client_id=${YANDEX_CLIENT_ID}&redirect_uri=${encodeURIComponent(callbackUrl)}`;
   res.redirect(redirectUrl);
 });
 
-app.get('/auth/yandex/callback', async (req, res) => {
+// Guest login - create anonymous user
+app.post('/api/auth/guest', (req, res) => {
+  const user = createGuestUser();
+  req.session.userId = user.id;
+  req.session.save(() => {
+    // Return the unique guest login so the client can store it in localStorage
+    res.json({ user: { ...user, is_guest: true }, guestLogin: user.login });
+  });
+});
+
+// Restore guest session from localStorage-stored login
+app.post('/api/auth/guest/restore', (req, res) => {
+  const { login } = req.body as { login: string };
+  if (!login || !isGeneratedGuestLogin(login)) {
+    return res.json({ user: null });
+  }
+  const user = findUserByAuthIdentity('guest', login);
+  if (!user || !user.is_guest) {
+    return res.json({ user: null });
+  }
+  req.session.userId = user.id;
+  req.session.save(() => {
+    res.json({ user: { ...user, is_guest: true } });
+  });
+});
+
+app.get('/api/auth/yandex/callback', async (req, res) => {
   const code = String(req.query.code || '');
   if (!code) {
     return res.status(400).send('Missing code');
@@ -142,14 +180,29 @@ app.get('/auth/yandex/callback', async (req, res) => {
 
     const yandexId = String(userInfo.data.id);
     let user = findUserByYandexId(yandexId);
+    
+    // If user has a guest session, transfer ratings to the real user
+    const guestUserId = req.session.userId;
+    
     if (!user) {
+      const displayName = userInfo.data.real_name || userInfo.data.name || userInfo.data.login || 'Яндекс пользователь';
       user = createUser({
         yandex_id: yandexId,
         login: userInfo.data.default_email || userInfo.data.login || '',
-        display_name: userInfo.data.real_name || userInfo.data.name || userInfo.data.login || 'Яндекс пользователь',
+        display_name: displayName,
         email: userInfo.data.default_email || null,
         picture: userInfo.data.profile_picture || userInfo.data.avatar_id || userInfo.data.default_avatar_id || null
-      });
+      }, { provider: 'yandex', providerUserId: yandexId });
+    }
+
+    // Transfer ratings from guest to real user
+    if (guestUserId && guestUserId !== user.id) {
+      const guestUser = findUserById(guestUserId);
+      if (guestUser && (guestUser as any).is_guest) {
+        transferRatings(guestUserId, user.id);
+        const ratings = getRatingsByUser(user.id);
+        saveUserMetrics(buildMetricsFromRatings(ratings));
+      }
     }
 
     req.session.userId = user.id;
@@ -160,7 +213,7 @@ app.get('/auth/yandex/callback', async (req, res) => {
   }
 });
 
-app.get('/auth/me', (req, res) => {
+app.get('/api/auth/me', (req, res) => {
   if (!req.session || !req.session.userId) {
     return res.json({ user: null });
   }
@@ -168,7 +221,7 @@ app.get('/auth/me', (req, res) => {
   res.json({ user: user || null });
 });
 
-app.get('/anime/search', async (req, res) => {
+app.get('/api/anime/search', async (req, res) => {
   const query = String(req.query.q || '');
   if (!query) {
     return res.status(400).json({ error: 'Search query required' });
@@ -182,7 +235,7 @@ app.get('/anime/search', async (req, res) => {
   }
 });
 
-app.get('/anime/discover', async (req, res) => {
+app.get('/api/anime/discover', async (req, res) => {
   try {
     const results = await fetchPopularAnime(40);
     res.json({ results });
@@ -192,7 +245,7 @@ app.get('/anime/discover', async (req, res) => {
   }
 });
 
-app.get('/anime/:id', requireAuth, async (req, res) => {
+app.get('/api/anime/:id', async (req, res) => {
   const animeId = parseInt(req.params.id);
   if (isNaN(animeId)) {
     return res.status(400).json({ error: 'Invalid anime id' });
@@ -206,13 +259,21 @@ app.get('/anime/:id', requireAuth, async (req, res) => {
   }
 });
 
-app.get('/ratings', requireAuth, (req, res) => {
-  const userId = req.session.userId!;
+app.get('/api/ratings', (req, res) => {
+  if (!req.session || !req.session.userId) {
+    return res.json({ ratings: [] });
+  }
+  const userId = req.session.userId;
   const ratings = getRatingsByUser(userId);
   res.json({ ratings });
 });
 
-app.post('/ratings', requireAuth, async (req, res) => {
+app.post('/api/ratings', async (req, res) => {
+  // Ensure user exists (create guest if needed) — await session save for guests
+  const userId = await ensureUser(req, res);
+  if (req.session) {
+    req.session.userId = userId;
+  }
   const { animeId, rating, was_recommended } = req.body as { animeId: number; rating: number; was_recommended: boolean };
   if (!animeId || typeof rating !== 'number') {
     return res.status(400).json({ error: 'animeId and rating are required' });
@@ -221,7 +282,6 @@ app.post('/ratings', requireAuth, async (req, res) => {
   try {
     const anime = await fetchAnimeById(animeId);
     const normalized = normalizeRating(rating);
-    const userId = req.session.userId!;
     const ratingRow: UserRating = {
       user_id: userId,
       anime_id: anime.id,
@@ -232,7 +292,7 @@ app.post('/ratings', requireAuth, async (req, res) => {
       genres: anime.genres,
       raw_rating: rating,
       rating_normalized: normalized,
-      was_recommended: was_recommended,
+      was_recommended: was_recommended || false,
     };
     saveOrUpdateRating(ratingRow);
     const ratings = getRatingsByUser(userId);
@@ -244,8 +304,11 @@ app.post('/ratings', requireAuth, async (req, res) => {
   }
 });
 
-app.get('/api/recommendations', requireAuth, async (req, res) => {
-  const userId = req.session.userId!;
+app.get('/api/recommendations', async (req, res) => {
+  if (!req.session || !req.session.userId) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  const userId = req.session.userId;
   const ratings = getRatingsByUser(userId);
   if (ratings.length < 5) {
     return res.status(400).json({ error: 'Please rate at least 5 anime to see recommendations.' });

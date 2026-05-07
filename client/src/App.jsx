@@ -1,18 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, Navigate, Route, Routes, useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
-import { getCurrentUser, fetchDiscover, searchAnime, getRatings, saveRating, getRecommendations, getAnimeDetails } from './api.js';
+import { getCurrentUser, createGuest, restoreGuest, fetchDiscover, searchAnime, getRatings, saveRating, getRecommendations, getAnimeDetails } from './api.js';
 import AnimeCard from './components/AnimeCard.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
+import RatingsPage from './pages/RatingsPage.jsx';
 import { TbBrandYandex } from "react-icons/tb";
 import { CiSearch } from "react-icons/ci";
 import { FaHeart, FaGithub } from "react-icons/fa6";
 import parser from "bbcode-to-react";
+
+const MIN_RATINGS_FOR_RECOMMENDATIONS = 5;
 
 function Header({ user, handleSearch, searchQuery, setSearchQuery }) {
   if (!user) return null;
   
   const getPictureUrl = (pictureId) => 
     `https://avatars.yandex.net/get-yapic/${pictureId}/islands-200`
+
+  const avatarSrc = user.is_guest
+    ? '/images/default-avatar-anime-girl.jpg'
+    : getPictureUrl(user.picture);
 
   return (
     <header className="app__header">
@@ -34,7 +41,9 @@ function Header({ user, handleSearch, searchQuery, setSearchQuery }) {
             <CiSearch size={20}/>
           </button>
       </form>
-      <img className="app__user-avatar" src={getPictureUrl(user.picture)} alt={user.display_name} />
+      <a href="/ratings" className="app__user-link">
+        <img className="app__user-avatar" src={avatarSrc} alt={user.display_name} />
+      </a>
     </header>
   );
 }
@@ -126,13 +135,46 @@ function AnimePage({ ratings, onRate }) {
   );
 }
 
+function LegacyAnimeRedirect() {
+  const { id } = useParams();
+  const location = useLocation();
+
+  return <Navigate to={`/anime/${id}${location.search}`} replace />;
+}
+
 function LoginPage({ error }) {
+  const [isPrivacyAccepted, setIsPrivacyAccepted] = useState(false);
+
+  function handleLoginClick(event) {
+    if (!isPrivacyAccepted) {
+      event.preventDefault();
+    }
+  }
+
   return (
     <div className="app app--centered">
       <section className="login-card">
         <h1 className="login-card__title">Войдите с помощью</h1>
+        <label className="login-card__privacy">
+          <input
+            type="checkbox"
+            checked={isPrivacyAccepted}
+            onChange={(event) => setIsPrivacyAccepted(event.target.checked)}
+          />
+          <span>
+            Я принимаю{' '}
+            <NavLink to="/privacy" className="login-card__privacy-link">
+              политику конфиденциальности
+            </NavLink>
+          </span>
+        </label>
         <div className='login-card__buttons'>
-          <a className="login-card__button" href="/auth/login">
+          <a
+            className={`login-card__button ${!isPrivacyAccepted ? 'login-card__button--disabled' : ''}`}
+            href="/api/auth/login"
+            aria-disabled={!isPrivacyAccepted}
+            onClick={handleLoginClick}
+          >
             <TbBrandYandex size={25}/>
           </a>
         </div>
@@ -142,20 +184,47 @@ function LoginPage({ error }) {
   );
 }
 
-function SearchPage({ searchQuery, searchResults, discover }) {
+function RatingRequirementNotice({ ratingsCount }) {
+  const ratingsLeft = Math.max(MIN_RATINGS_FOR_RECOMMENDATIONS - ratingsCount, 0);
+
+  return (
+    <section className="app__info-block">
+      <p className="app__info-block__title">
+        Вам осталось оценить {ratingsLeft} / {MIN_RATINGS_FOR_RECOMMENDATIONS} аниме, чтобы получить рекомендации!
+      </p>
+    </section>
+  );
+}
+
+function SearchPage({ searchQuery, searchResults, discover, ratings = [], onRate, title, children }) {
   const isSearching = searchQuery && searchResults.length === 0;
+  const animeList = searchResults.length ? searchResults : discover;
+
+  function getInitialRating(animeId) {
+    return ratings.find((rating) => rating.anime_id == animeId)?.raw_rating || 0;
+  }
 
   return (
     <main className="search-page">
+      {children}
       {searchQuery && (
         <h2 className="search-page__title">Результаты поиска по запросу "{searchQuery}"</h2>
       )}
-      <section className="anime-list">
+      {!searchQuery && title && (
+        <h2 className="search-page__title">{title}</h2>
+      )}
+      <section className="ratings-page__list">
         {isSearching ? (
           <p className="app__info-block__title">Загрузка...</p>
         ) : (
-          (searchResults.length ? searchResults : discover).map((anime) => (
-            <AnimeCard key={anime.id} anime={anime} />
+          animeList.map((anime) => (
+            <AnimeCard
+              key={anime.id}
+              anime={anime}
+              withRating={true}
+              initialRating={getInitialRating(anime.id)}
+              onRate={onRate}
+            />
           ))
         )}
       </section>
@@ -164,7 +233,7 @@ function SearchPage({ searchQuery, searchResults, discover }) {
 }
 
 function RecommendationsPage({ recommendations, ratings }) {
-  const hasEnoughRatings = ratings.length >= 5;
+  const hasEnoughRatings = ratings.length >= MIN_RATINGS_FOR_RECOMMENDATIONS;
   
   return (
     <main className="recommendations-page">
@@ -173,17 +242,42 @@ function RecommendationsPage({ recommendations, ratings }) {
       )}
 
       {!hasEnoughRatings ? (
-        <section className="app__info-block__title-block">
-          <p className="app__info-block__title-block__title">Пожалуйста, оцените ваши первые 5 аниме, чтобы получить рекомендации</p>
-        </section>
+        <RatingRequirementNotice ratingsCount={ratings.length} />
       ) : (
         <section className="anime-list">
           {recommendations.map((anime) => (
-            <AnimeCard key={anime.id} anime={anime} recommendations={true} />
+            <AnimeCard key={anime.id} anime={anime} recommendations={true} withRating={false} />
           ))}
       </section>
       )}
     </main>
+  );
+}
+
+function HomePage({ status, recommendations, discover, ratings, onRate }) {
+  if (status === 'loading') {
+    return (
+      <div className="app__loading">
+        <p className="app__info-block__title">Загрузка...</p>
+      </div>
+    );
+  }
+
+  if (ratings.length >= MIN_RATINGS_FOR_RECOMMENDATIONS) {
+    return <RecommendationsPage recommendations={recommendations} ratings={ratings} />;
+  }
+
+  return (
+    <SearchPage
+      searchQuery=""
+      searchResults={[]}
+      discover={discover}
+      ratings={ratings}
+      onRate={onRate}
+      title="Популярные аниме"
+    >
+      <RatingRequirementNotice ratingsCount={ratings.length} />
+    </SearchPage>
   );
 }
 
@@ -203,19 +297,6 @@ function Footer() {
       </div>
     </footer>
   );
-}
-
-function PrivateRoute({ allow, redirectTo, authChecked, status, user, children }) {
-  if (!authChecked) {
-    return <p className="app__info-block__title-block__title">Загрузка...</p>;
-  }
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-  if (!allow) {
-    return <Navigate to={redirectTo} replace />;
-  }
-  return children;
 }
 
 function App() {
@@ -243,30 +324,67 @@ function App() {
       const response = await getCurrentUser();
       if (response.user) {
         setUser(response.user);
+        if (!response.user.is_guest) {
+          localStorage.removeItem('guestLogin');
+        }
         await loadRatings();
-      } else {
-        setStatus('ready');
+        setAuthChecked(true);
+        return;
       }
+
+      // No active session — try to restore guest from localStorage
+      const savedLogin = localStorage.getItem('guestLogin');
+      if (savedLogin) {
+        try {
+          const restoreResponse = await restoreGuest(savedLogin);
+          if (restoreResponse.user) {
+            setUser(restoreResponse.user);
+            await loadRatings();
+            setAuthChecked(true);
+            return;
+          }
+        } catch (e) {
+          // restore failed, will create new guest
+        }
+      }
+
+      // No saved guest or restore failed — create new guest
+      try {
+        const guestResponse = await createGuest();
+        setUser(guestResponse.user);
+        // Save guest login to localStorage for session persistence across reloads
+        if (guestResponse.guestLogin) {
+          localStorage.setItem('guestLogin', guestResponse.guestLogin);
+        }
+      } catch (err) {
+        setError('Не удалось создать гостевую сессию');
+        setAuthChecked(true);
+        setStatus('ready');
+        return;
+      }
+
+      await loadRatings();
+      setAuthChecked(true);
     } catch (err) {
       setStatus('ready');
-    } finally {
       setAuthChecked(true);
     }
   }
 
   async function loadRatings() {
-    try {
-      const response = await getRatings();
-      setRatings(response.ratings);
-      if (response.ratings.length < 5) {
-        const discoverResponse = await fetchDiscover();
-        setDiscover(discoverResponse.results);
-        return;
-      }
-      await loadRecommendations();
-    } finally {
-      setStatus('recommendations');
+    const response = await getRatings();
+    const nextRatings = response.ratings;
+    setRatings(nextRatings);
+
+    if (nextRatings.length < MIN_RATINGS_FOR_RECOMMENDATIONS) {
+      const discoverResponse = await fetchDiscover();
+      setDiscover(discoverResponse.results);
+      setRecommendations([]);
+      setStatus('discover');
+      return;
     }
+
+    await loadRecommendations();
   }
 
   async function loadRecommendations() {
@@ -313,7 +431,17 @@ function App() {
     }
   }, [searchQuery, location.pathname]);
 
-  const targetRoute = !user ? '/login' : '/recommendations';
+  if (!authChecked) {
+    return (
+      <>
+        <Header user={null} />
+        <div className="app app--loading">
+          <p className="app__info-block__title">Загрузка...</p>
+        </div>
+        <Footer />
+      </>
+    );
+  }
 
   return (
     <>
@@ -329,50 +457,77 @@ function App() {
           <Route
             path="/"
             element={
-              !authChecked ? (
-                <p className="app__info-block__title">Думаем над вашими рекомендациями...</p>
-              ) : !user ? (
-                <Navigate to="/login" replace />
+              !user ? (
+                <div className="app__loading">
+                  <p className="app__info-block__title">Загрузка...</p>
+                </div>
               ) : (
-                <Navigate to={targetRoute} replace />
-              )
-            }
-          />
-          <Route path="/login" element={user ? <Navigate to={targetRoute} replace /> : <LoginPage error={error} />} />
-          <Route
-            path={`/search`}
-            element={
-              <PrivateRoute allow={true} redirectTo="/login" authChecked={authChecked} status={status} user={user}>
-                <SearchPage
-                  searchQuery={searchQuery}
-                  searchResults={searchResults}
-                  discover={discover}
-                />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/recommendations"
-            element={
-              <PrivateRoute allow={true} redirectTo="/login" authChecked={authChecked} status={status} user={user}>
-                <RecommendationsPage 
+                <HomePage
+                  status={status}
                   recommendations={recommendations}
-                  ratings={ratings}
-                />
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/ani/:id"
-            element={
-              <PrivateRoute allow={true} redirectTo="/login" authChecked={authChecked} status={status} user={user}>
-                <AnimePage
+                  discover={discover}
                   ratings={ratings}
                   onRate={handleRate}
                 />
-              </PrivateRoute>
+              )
             }
           />
+          <Route path="/login" element={<LoginPage error={error} />} />
+          <Route
+            path="/discover"
+            element={
+              <SearchPage
+                searchQuery={''}
+                searchResults={[]}
+                discover={discover}
+                ratings={ratings}
+                onRate={handleRate}
+                title="Популярные аниме"
+              />
+            }
+          />
+          <Route
+            path={`/search`}
+            element={
+              <SearchPage
+                searchQuery={searchQuery}
+                searchResults={searchResults}
+                discover={discover}
+                ratings={ratings}
+                onRate={handleRate}
+              />
+            }
+          />
+          <Route
+            path="/ratings"
+            element={
+              <RatingsPage
+                user={user}
+                ratings={ratings}
+                onRate={handleRate}
+              />
+            }
+          />
+          <Route path="/userrates" element={<Navigate to="/ratings" replace />} />
+          <Route
+            path="/recommendations"
+            element={
+              <RecommendationsPage 
+                recommendations={recommendations}
+                ratings={ratings}
+              />
+            }
+          />
+          <Route
+            path="/anime/:id"
+            element={
+              <AnimePage
+                ratings={ratings}
+                onRate={handleRate}
+              />
+            }
+          />
+          <Route path="/ani/:id" element={<LegacyAnimeRedirect />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

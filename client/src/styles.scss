@@ -26,6 +26,7 @@ a {
 }
 
 .app {
+  display: flow-root;
   max-width: 1280px;
   min-height: 100vh;
   margin: 0 auto;
@@ -42,6 +43,26 @@ a {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
+}
+
+.app--loading,
+.app__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app--loading {
+  min-height: 100vh;
+}
+
+.app__loading {
+  min-height: 40vh;
+}
+
+.app--loading .app__info-block__title,
+.app__loading .app__info-block__title {
+  margin: 0;
 }
 
 .app__header {
@@ -119,6 +140,7 @@ a {
   display: flex;
   flex-direction: column;
   align-items: center;
+  margin-bottom: 1.5rem;
 }
 
 .app__info-block__title,
@@ -172,7 +194,7 @@ a {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100%;
+  flex: 1;
   width: 100%;
 }
 
@@ -188,6 +210,50 @@ a {
   transition: transform 0.18s ease, box-shadow 0.18s ease;
   height: 40px;
   width: 100%;
+}
+
+.login-card__button--disabled {
+  color: rgba(255, 255, 255, 0.45);
+  border-color: rgba(255, 255, 255, 0.32);
+  cursor: not-allowed;
+  pointer-events: auto;
+}
+
+.login-card__button--disabled:hover {
+  transform: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.45);
+  box-shadow: none;
+}
+
+.login-card__privacy {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  color: #bbc1d2;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.login-card__privacy input {
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  accent-color: #E46AE6;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.login-card__privacy-link {
+  color: #E46AE6;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+
+  &:hover {
+    color: #f7f7fb;
+  }
 }
 
 .search-form {
@@ -246,24 +312,16 @@ a {
 
   @media screen and (max-width: 768px) {
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    row-gap: 1rem;
     column-gap: 1rem;
   }
 
   @media screen and (max-width: 500px) {
     grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-    row-gap: 0.75rem;
-    column-gap: 0.5rem;
-  }
-
-  @media screen and (max-width: 380px) {
-    row-gap: 0.5rem;
     column-gap: 0.5rem;
   }
 
   @media screen and (max-width: 300px) {
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    row-gap: 0.4rem;
     column-gap: 0.4rem;
   }
 }
@@ -319,9 +377,7 @@ a {
 
     @media (max-width: 768px) {
       font-size: 0.9rem;
-    }
-    @media (max-width: 380px) {
-      font-size: 0.8rem;
+      font-weight: 500;
     }
   }
 }
@@ -486,6 +542,202 @@ a {
   color: #ffd700;
 }
 
+.ratings-page {
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-bottom: 48px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  &__avatar {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    object-fit: cover;
+
+    @media screen and (max-width: 500px) {
+      width: 50px;
+      height: 50px;
+    }
+  }
+
+  &__user-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  &__name {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 500;
+
+    @media screen and (max-width: 500px) {
+      font-size: 1.2rem;
+    }
+  }
+
+  &__email {
+    margin: 0;
+    color: #adadc2;
+    font-size: 0.95rem;
+  }
+
+  &__login-link {
+    color: #E46AE6;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+
+    &:hover {
+      color: #f7f7fb;
+    }
+  }
+
+  &__list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    flex-direction: column;
+    gap: 16px;
+
+    @media screen and (max-width: 1024px) {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+
+.app__user-link {
+  display: block;
+  line-height: 0;
+}
+
+.anime-card--with-rating {
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  min-height: 0;
+  text-decoration: none;
+
+  &:hover {
+    transform: none;
+    text-decoration: none;
+  }
+
+  .anime-card__link {
+    flex-shrink: 0;
+    display: block;
+    line-height: 0;
+  }
+
+  .anime-card__image {
+    width: 120px;
+    height: 170px;
+    border-radius: 12px;
+    justify-self: center;
+
+    @media screen and (max-width: 500px) {
+      width: 100px;
+      height: 140px;
+    }
+  }
+
+  .anime-card__right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .anime-card__title-link {
+    text-decoration: none;
+    
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  .anime-card__title {
+    padding: 0;
+    margin: 0;
+    text-align: center;
+    white-space: normal;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    font-size: 1.15rem;
+    font-weight: 500;
+
+    @media screen and (max-width: 425px) {
+      font-size: 1rem;
+      font-weight: 450;
+    }
+  }
+
+  .anime-card__rating {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 0;
+    margin-top: 8px;
+
+    .stars {
+      display: flex;
+      gap: 3px;
+      margin: 0;
+
+      @media screen and (max-width: 425px) {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 0 2px;
+        justify-items: center;
+      }
+    }
+
+    .star {
+      font-size: 28px;
+
+      @media screen and (max-width: 500px) {
+        font-size: 23px;
+      }
+    }
+  }
+
+  .anime-card__save-btn {
+    padding: 6px 16px;
+    background: #E46AE6;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 450;
+    transition: opacity 200ms ease;
+
+    &:hover {
+      scale: 1.005;
+      transition: all 100ms ease;
+    }
+
+    &:disabled {
+      background: #fd90ff6e;
+      color: #cacaca;
+      cursor: not-allowed;
+    }
+  }
+}
+
 .anime-page__save-btn {
   padding: 10px 20px;
   background: #E46AE6;
@@ -501,12 +753,12 @@ a {
     scale: 1.03;
     transition: all 100ms ease;
   }
-}
 
-.anime-page__save-btn:disabled {
-  background: #fd90ff6e;
-  color: #cacaca;
-  cursor: not-allowed;
+  &:disabled {
+    background: #fd90ff6e;
+    color: #cacaca;
+    cursor: not-allowed;
+  }
 }
 
 .footer {
