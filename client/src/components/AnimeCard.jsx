@@ -12,6 +12,7 @@ export default function AnimeCard({ anime, recommendations, withRating, initialR
   }, [anime.id, initialRating]);
 
   const hasChanges = userRating !== originalRating;
+  const animeUrl = `/anime/${anime.id}${recommendations ? `?recommended=${recommendations}` : ''}`;
 
   const handleSaveRating = async () => {
     setSaving(true);
@@ -23,11 +24,11 @@ export default function AnimeCard({ anime, recommendations, withRating, initialR
   if (withRating) {
     return (
       <div className="anime-card anime-card--with-rating">
-        <a href={`/ani/${anime.id}${recommendations ? `?recommended=${recommendations}` : ''}`} className="anime-card__link">
+        <a href={animeUrl} className="anime-card__link">
           <div className="anime-card__image" style={{ backgroundImage: `url(${`/api/image?url=${encodeURIComponent(anime.image)}`|| ''})` }} />
         </a>
         <div className="anime-card__right">
-          <a href={`/ani/${anime.id}${recommendations ? `?recommended=${recommendations}` : ''}`} className="anime-card__title-link">
+          <a href={animeUrl} className="anime-card__title-link">
             <p className="anime-card__title">{anime.title}</p>
           </a>
           <div className="anime-card__rating">
@@ -56,7 +57,7 @@ export default function AnimeCard({ anime, recommendations, withRating, initialR
   }
 
   return (
-    <a href={`/ani/${anime.id}${recommendations ? `?recommended=${recommendations}` : ''}`} className="anime-card">
+    <a href={animeUrl} className="anime-card">
       <article className="anime-card">
         <div className="anime-card__image" style={{ backgroundImage: `url(${`/api/image?url=${encodeURIComponent(anime.image)}`|| ''})` }} />
         <p className="anime-card__title">{anime.title}</p>

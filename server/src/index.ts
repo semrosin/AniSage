@@ -123,14 +123,14 @@ app.get('/api/image', async (req, res) => {
 app.use('/images', express.static(path.join(__dirname, 'uploads/images')));
 app.use('/public/images', express.static(path.join(__dirname, '..', 'public', 'images')));
 
-app.get('/auth/login', (req, res) => {
-  const callbackUrl = `${BASE_URL}/auth/yandex/callback`;
+app.get('/api/auth/login', (req, res) => {
+  const callbackUrl = `${BASE_URL}/api/auth/yandex/callback`;
   const redirectUrl = `https://oauth.yandex.com/authorize?response_type=code&client_id=${YANDEX_CLIENT_ID}&redirect_uri=${encodeURIComponent(callbackUrl)}`;
   res.redirect(redirectUrl);
 });
 
 // Guest login - create anonymous user
-app.post('/auth/guest', (req, res) => {
+app.post('/api/auth/guest', (req, res) => {
   const user = createGuestUser();
   req.session.userId = user.id;
   req.session.save(() => {
@@ -140,7 +140,7 @@ app.post('/auth/guest', (req, res) => {
 });
 
 // Restore guest session from localStorage-stored login
-app.post('/auth/guest/restore', (req, res) => {
+app.post('/api/auth/guest/restore', (req, res) => {
   const { login } = req.body as { login: string };
   if (!login || !isGeneratedGuestLogin(login)) {
     return res.json({ user: null });
@@ -155,7 +155,7 @@ app.post('/auth/guest/restore', (req, res) => {
   });
 });
 
-app.get('/auth/yandex/callback', async (req, res) => {
+app.get('/api/auth/yandex/callback', async (req, res) => {
   const code = String(req.query.code || '');
   if (!code) {
     return res.status(400).send('Missing code');
@@ -213,7 +213,7 @@ app.get('/auth/yandex/callback', async (req, res) => {
   }
 });
 
-app.get('/auth/me', (req, res) => {
+app.get('/api/auth/me', (req, res) => {
   if (!req.session || !req.session.userId) {
     return res.json({ user: null });
   }
@@ -221,7 +221,7 @@ app.get('/auth/me', (req, res) => {
   res.json({ user: user || null });
 });
 
-app.get('/anime/search', async (req, res) => {
+app.get('/api/anime/search', async (req, res) => {
   const query = String(req.query.q || '');
   if (!query) {
     return res.status(400).json({ error: 'Search query required' });
@@ -235,7 +235,7 @@ app.get('/anime/search', async (req, res) => {
   }
 });
 
-app.get('/anime/discover', async (req, res) => {
+app.get('/api/anime/discover', async (req, res) => {
   try {
     const results = await fetchPopularAnime(40);
     res.json({ results });
@@ -245,7 +245,7 @@ app.get('/anime/discover', async (req, res) => {
   }
 });
 
-app.get('/anime/:id', async (req, res) => {
+app.get('/api/anime/:id', async (req, res) => {
   const animeId = parseInt(req.params.id);
   if (isNaN(animeId)) {
     return res.status(400).json({ error: 'Invalid anime id' });
@@ -259,7 +259,7 @@ app.get('/anime/:id', async (req, res) => {
   }
 });
 
-app.get('/ratings', (req, res) => {
+app.get('/api/ratings', (req, res) => {
   if (!req.session || !req.session.userId) {
     return res.json({ ratings: [] });
   }
@@ -268,7 +268,7 @@ app.get('/ratings', (req, res) => {
   res.json({ ratings });
 });
 
-app.post('/ratings', async (req, res) => {
+app.post('/api/ratings', async (req, res) => {
   // Ensure user exists (create guest if needed) — await session save for guests
   const userId = await ensureUser(req, res);
   if (req.session) {

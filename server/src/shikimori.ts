@@ -5,6 +5,11 @@ const BASE_URL = 'https://shikimori.one/api';
 const MAX_FETCH_RETRIES = 3;
 const FETCH_RETRY_DELAY_MS = 500;
 const MAX_CONCURRENT_ENRICH = 5;
+const RECOMMENDATION_CANDIDATE_SOURCES = [
+  { order: 'popularity', limit: 25 },
+  { order: 'ranked', limit: 15 },
+  { order: 'ranked_random', limit: 10 },
+];
 
 const animeCache = new Map<number, AnimeSummary>();
 
@@ -132,9 +137,40 @@ export async function fetchPopularAnime(limit = 50): Promise<AnimeSummary[]> {
   });
 }
 
-export async function getEnoughCandidates(userRatedIds: Set<number>, target = 48) {
+function appendUniqueCandidates(
+  targetList: AnimeSummary[],
+  candidates: AnimeSummary[],
+  seenIds: Set<number>,
+  userRatedIds: Set<number>,
+  target: number
+) {
+  for (const anime of candidates) {
+    if (targetList.length >= target) break;
+    if (userRatedIds.has(anime.id) || seenIds.has(anime.id)) continue;
+    seenIds.add(anime.id);
+    targetList.push(anime);
+  }
+}
+
+export async function getEnoughCandidates(userRatedIds: Set<number>, target = 50) {
   let page = 1;
   const result: AnimeSummary[] = [];
+  const seenIds = new Set<number>();
+
+  for (const source of RECOMMENDATION_CANDIDATE_SOURCES) {
+    if (result.length >= target) break;
+    try {
+      const data = await fetchAnimeList({
+        order: source.order,
+        limit: source.limit,
+        page: 1,
+      });
+
+      appendUniqueCandidates(result, data, seenIds, userRatedIds, target);
+    } catch (error) {
+      console.warn(`Shikimori fetch ${source.order} candidates failed, continuing...`, error);
+    }
+  }
 
   while (result.length < target) {
     try {
@@ -146,10 +182,7 @@ export async function getEnoughCandidates(userRatedIds: Set<number>, target = 48
 
       if (!data.length) break;
 
-      const filtered = data.filter((anime) =>
-        !userRatedIds.has(anime.id)
-      );
-      result.push(...filtered);
+      appendUniqueCandidates(result, data, seenIds, userRatedIds, target);
       page++;
     } catch (error) {
       console.warn(`Shikimori fetch page ${page} failed, retrying...`, error);

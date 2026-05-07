@@ -5,6 +5,8 @@ const defaultOptions = {
   }
 };
 
+const API_PREFIX = '/api';
+
 async function request(path, options = {}) {
   const response = await fetch(path, { ...defaultOptions, ...options });
   const data = await response.json();
@@ -15,15 +17,15 @@ async function request(path, options = {}) {
 }
 
 export function getCurrentUser() {
-  return request('/auth/me');
+  return request(`${API_PREFIX}/auth/me`);
 }
 
 export function createGuest() {
-  return request('/auth/guest', { method: 'POST' });
+  return request(`${API_PREFIX}/auth/guest`, { method: 'POST' });
 }
 
 export function restoreGuest(login) {
-  return request('/auth/guest/restore', {
+  return request(`${API_PREFIX}/auth/guest/restore`, {
     method: 'POST',
     body: JSON.stringify({ login })
   });
@@ -41,7 +43,7 @@ function mapAnimeFields(item) {
 }
 
 export async function fetchDiscover() {
-  const data = await request('/anime/discover');
+  const data = await request(`${API_PREFIX}/anime/discover`);
   return {
     ...data,
     results: data.results?.map(mapAnimeFields) || []
@@ -49,7 +51,7 @@ export async function fetchDiscover() {
 }
 
 export async function searchAnime(query) {
-  const data = await request(`/anime/search?q=${encodeURIComponent(query)}`);
+  const data = await request(`${API_PREFIX}/anime/search?q=${encodeURIComponent(query)}`);
   return {
     ...data,
     results: data.results?.map(mapAnimeFields) || []
@@ -57,18 +59,18 @@ export async function searchAnime(query) {
 }
 
 export function getRatings() {
-  return request('/ratings');
+  return request(`${API_PREFIX}/ratings`);
 }
 
 export function saveRating(animeId, rating, was_recommended = false) {
-  return request('/ratings', {
+  return request(`${API_PREFIX}/ratings`, {
     method: 'POST',
     body: JSON.stringify({ animeId, rating, was_recommended })
   });
 }
 
 export async function getRecommendations() {
-  const data = await request('/api/recommendations');
+  const data = await request(`${API_PREFIX}/recommendations`);
   return {
     ...data,
     recommendations: data.recommendations?.map(mapAnimeFields) || []
@@ -76,5 +78,5 @@ export async function getRecommendations() {
 }
 
 export function getAnimeDetails(animeId) {
-  return request(`/anime/${animeId}`);
+  return request(`${API_PREFIX}/anime/${animeId}`);
 }

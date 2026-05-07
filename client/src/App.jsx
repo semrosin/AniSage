@@ -41,7 +41,7 @@ function Header({ user, handleSearch, searchQuery, setSearchQuery }) {
             <CiSearch size={20}/>
           </button>
       </form>
-      <a href="/userrates" className="app__user-link">
+      <a href="/ratings" className="app__user-link">
         <img className="app__user-avatar" src={avatarSrc} alt={user.display_name} />
       </a>
     </header>
@@ -135,13 +135,46 @@ function AnimePage({ ratings, onRate }) {
   );
 }
 
+function LegacyAnimeRedirect() {
+  const { id } = useParams();
+  const location = useLocation();
+
+  return <Navigate to={`/anime/${id}${location.search}`} replace />;
+}
+
 function LoginPage({ error }) {
+  const [isPrivacyAccepted, setIsPrivacyAccepted] = useState(false);
+
+  function handleLoginClick(event) {
+    if (!isPrivacyAccepted) {
+      event.preventDefault();
+    }
+  }
+
   return (
     <div className="app app--centered">
       <section className="login-card">
         <h1 className="login-card__title">Войдите с помощью</h1>
+        <label className="login-card__privacy">
+          <input
+            type="checkbox"
+            checked={isPrivacyAccepted}
+            onChange={(event) => setIsPrivacyAccepted(event.target.checked)}
+          />
+          <span>
+            Я принимаю{' '}
+            <NavLink to="/privacy" className="login-card__privacy-link">
+              политику конфиденциальности
+            </NavLink>
+          </span>
+        </label>
         <div className='login-card__buttons'>
-          <a className="login-card__button" href="/auth/login">
+          <a
+            className={`login-card__button ${!isPrivacyAccepted ? 'login-card__button--disabled' : ''}`}
+            href="/api/auth/login"
+            aria-disabled={!isPrivacyAccepted}
+            onClick={handleLoginClick}
+          >
             <TbBrandYandex size={25}/>
           </a>
         </div>
@@ -466,7 +499,7 @@ function App() {
             }
           />
           <Route
-            path="/userrates"
+            path="/ratings"
             element={
               <RatingsPage
                 user={user}
@@ -475,6 +508,7 @@ function App() {
               />
             }
           />
+          <Route path="/userrates" element={<Navigate to="/ratings" replace />} />
           <Route
             path="/recommendations"
             element={
@@ -485,7 +519,7 @@ function App() {
             }
           />
           <Route
-            path="/ani/:id"
+            path="/anime/:id"
             element={
               <AnimePage
                 ratings={ratings}
@@ -493,6 +527,7 @@ function App() {
               />
             }
           />
+          <Route path="/ani/:id" element={<LegacyAnimeRedirect />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

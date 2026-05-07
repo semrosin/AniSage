@@ -8,9 +8,6 @@ export default defineConfig({
     port: 5173,
     historyApiFallback: true,
     proxy: {
-      '/auth': 'http://localhost:4000',
-      '/anime': 'http://localhost:4000',
-      '/ratings': 'http://localhost:4000',
       '/api': 'http://localhost:4000',
       '/system': 'http://localhost:4000',
     }
