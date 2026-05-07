@@ -1,9 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 export default function AnimeCard({ anime, recommendations, withRating, initialRating, onRate }) {
   const [userRating, setUserRating] = useState(initialRating || 0);
   const [originalRating, setOriginalRating] = useState(initialRating || 0);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const nextRating = initialRating || 0;
+    setUserRating(nextRating);
+    setOriginalRating(nextRating);
+  }, [anime.id, initialRating]);
 
   const hasChanges = userRating !== originalRating;
 

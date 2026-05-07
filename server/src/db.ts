@@ -1,7 +1,8 @@
 import initSqlJs, { Database } from 'sql.js';
 import path from 'path';
 import fs from 'fs';
-import { User, UserMetrics, UserRating } from './types';
+import crypto from 'crypto';
+import { AuthIdentity, User, UserMetrics, UserRating } from './types';
 
 const dbPath = path.resolve(process.cwd(), 'server.db');
 let db: Database;
@@ -34,14 +35,8 @@ function queryAll(sql: string, params: any[] = []) {
   return rows;
 }
 
-export async function initDb() {
-  const SQL = await initSqlJs({ locateFile: () => require.resolve('sql.js/dist/sql-wasm.wasm') });
-  if (fs.existsSync(dbPath)) {
-    const existing = fs.readFileSync(dbPath);
-    db = new SQL.Database(existing);
-  } else {
-    db = new SQL.Database();
-    execute(`
+function createSchema() {
+  execute(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY,
         yandex_id TEXT UNIQUE,
@@ -93,9 +88,47 @@ export async function initDb() {
         similarity REAL NOT NULL,
         PRIMARY KEY (studio_a, studio_b)
       );
+
+      CREATE TABLE IF NOT EXISTS auth_identities (
+        id INTEGER PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        provider TEXT NOT NULL,
+        provider_user_id TEXT NOT NULL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(provider, provider_user_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_auth_identities_user_id ON auth_identities(user_id);
     `);
-    saveDb();
+}
+
+function columnExists(table: string, column: string) {
+  return queryAll(`PRAGMA table_info(${table})`).some((row: any) => row.name === column);
+}
+
+function migrateAuthIdentities() {
+  if (columnExists('users', 'yandex_id')) {
+    execute(`
+      INSERT OR IGNORE INTO auth_identities (user_id, provider, provider_user_id)
+      SELECT id, 'yandex', yandex_id
+      FROM users
+      WHERE yandex_id IS NOT NULL AND yandex_id != ''
+    `);
   }
+}
+
+export async function initDb() {
+  const SQL = await initSqlJs({ locateFile: () => require.resolve('sql.js/dist/sql-wasm.wasm') });
+  if (fs.existsSync(dbPath)) {
+    const existing = fs.readFileSync(dbPath);
+    db = new SQL.Database(existing);
+  } else {
+    db = new SQL.Database();
+  }
+
+  createSchema();
+  migrateAuthIdentities();
+  saveDb();
   await seedStudios();
 }
 
@@ -160,43 +193,92 @@ function serializeRow(row: any) {
   };
 }
 
+function serializeUser(row: any): User | undefined {
+  if (!row) return undefined;
+  return {
+    ...row,
+    is_guest: row.is_guest === 1
+  };
+}
+
+export function findUserByAuthIdentity(provider: AuthIdentity['provider'], providerUserId: string): User | undefined {
+  const row = queryGet(
+    `SELECT u.*
+     FROM users AS u
+     JOIN auth_identities AS ai ON ai.user_id = u.id
+     WHERE ai.provider = ? AND ai.provider_user_id = ?`,
+    [provider, providerUserId]
+  );
+  return serializeUser(row);
+}
+
 export function findUserByYandexId(yandexId: string): User | undefined {
-  return queryGet('SELECT * FROM users WHERE yandex_id = ?', [yandexId]);
+  const identityUser = findUserByAuthIdentity('yandex', yandexId);
+  if (identityUser) return identityUser;
+
+  const legacyUser = serializeUser(queryGet('SELECT * FROM users WHERE yandex_id = ?', [yandexId]));
+  if (legacyUser) {
+    linkAuthIdentity(legacyUser.id, 'yandex', yandexId);
+  }
+  return legacyUser;
 }
 
 export function findUserById(id: number): User | undefined {
   const row = queryGet('SELECT * FROM users WHERE id = ?', [id]);
-  if (!row) return undefined;
-  return {
-    ...row,
-    is_guest: row.is_guest === 1
-  };
+  return serializeUser(row);
 }
 
 export function findUserByLogin(login: string): User | undefined {
   const row = queryGet('SELECT * FROM users WHERE login = ?', [login]);
-  if (!row) return undefined;
-  return {
-    ...row,
-    is_guest: row.is_guest === 1
-  };
+  return serializeUser(row);
 }
 
-export function createUser(user: Omit<User, 'id'>): User {
-  const result = db.prepare('INSERT INTO users (yandex_id, login, display_name, email, picture, is_guest) VALUES (?, ?, ?, ?, ?, ?)').run([
-    user.yandex_id || null,
+export function linkAuthIdentity(userId: number, provider: AuthIdentity['provider'], providerUserId: string) {
+  db.prepare(
+    `INSERT OR IGNORE INTO auth_identities (user_id, provider, provider_user_id)
+     VALUES (?, ?, ?)`
+  ).run([userId, provider, providerUserId]);
+  saveDb();
+}
+
+export function createUser(
+  user: Omit<User, 'id'>,
+  identity?: { provider: AuthIdentity['provider']; providerUserId: string }
+): User {
+  db.prepare('INSERT INTO users (yandex_id, login, display_name, email, picture, is_guest) VALUES (?, ?, ?, ?, ?, ?)').run([
+    user.yandex_id || (identity?.provider === 'yandex' ? identity.providerUserId : null),
     user.login || '',
     user.display_name || '',
     user.email || null,
     user.picture || null,
     (user as any).is_guest ? 1 : 0
   ]);
+  const inserted = queryGet('SELECT last_insert_rowid() AS id');
+  const id = Number(inserted?.id);
+  if (!Number.isFinite(id) || id <= 0) {
+    throw new Error('Failed to create user');
+  }
+
+  if (identity) {
+    db.prepare(
+      `INSERT OR IGNORE INTO auth_identities (user_id, provider, provider_user_id)
+       VALUES (?, ?, ?)`
+    ).run([id, identity.provider, identity.providerUserId]);
+  }
   saveDb();
-  return { id: Number(result.lastInsertRowid), ...user };
+  return { id, ...user };
+}
+
+function generateGuestLogin() {
+  return `user${crypto.randomInt(0, 10_000_000_000).toString().padStart(10, '0')}`;
 }
 
 export function createGuestUser(): User {
-  const guestId = 'guest_' + Math.random().toString(36).substring(2, 12);
+  let guestId = generateGuestLogin();
+  while (findUserByLogin(guestId) || findUserByAuthIdentity('guest', guestId)) {
+    guestId = generateGuestLogin();
+  }
+
   return createUser({
     yandex_id: null,
     login: guestId,
@@ -204,19 +286,26 @@ export function createGuestUser(): User {
     email: null,
     picture: null,
     is_guest: true
-  } as any);
+  } as any, { provider: 'guest', providerUserId: guestId });
 }
 
 export function transferRatings(fromUserId: number, toUserId: number) {
-  db.run('BEGIN TRANSACTION');
-  // Update ratings: change user_id from guest to real user, handling conflicts
-  const ratings = getRatingsByUser(fromUserId);
-  for (const rating of ratings) {
-    // Try to insert, on conflict (already rated by target user) skip
-    try {
+  try {
+    db.run('BEGIN TRANSACTION');
+    const ratings = getRatingsByUser(fromUserId);
+
+    for (const rating of ratings) {
+      const targetRating = queryGet(
+        'SELECT id FROM user_ratings WHERE user_id = ? AND anime_id = ?',
+        [toUserId, rating.anime_id]
+      );
+      if (targetRating) {
+        continue;
+      }
+
       db.prepare(
-        `INSERT OR IGNORE INTO user_ratings (user_id, anime_id, title, image, year, studios, genres, raw_rating, rating_normalized, was_recommended)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO user_ratings (user_id, anime_id, title, image, year, studios, genres, raw_rating, rating_normalized, updated_at, was_recommended)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).run([
         toUserId,
         rating.anime_id,
@@ -227,17 +316,18 @@ export function transferRatings(fromUserId: number, toUserId: number) {
         JSON.stringify(rating.genres || []),
         rating.raw_rating,
         rating.rating_normalized,
+        rating.updated_at || new Date().toISOString(),
         rating.was_recommended || false
       ]);
-    } catch (e) {
-      // ignore conflict
     }
+
+    db.prepare('DELETE FROM user_ratings WHERE user_id = ?').run([fromUserId]);
+    db.run('COMMIT');
+    saveDb();
+  } catch (error) {
+    db.run('ROLLBACK');
+    throw error;
   }
-  // Delete old guest ratings that were transferred
-  db.prepare('DELETE FROM user_ratings WHERE user_id = ? AND anime_id IN (SELECT anime_id FROM user_ratings WHERE user_id = ?)')
-    .run([fromUserId, toUserId]);
-  db.run('COMMIT');
-  saveDb();
 }
 
 export function saveOrUpdateRating(rating: UserRating) {

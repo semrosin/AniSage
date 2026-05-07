@@ -149,8 +149,13 @@ function LoginPage({ error }) {
   );
 }
 
-function SearchPage({ searchQuery, searchResults, discover, onRate }) {
+function SearchPage({ searchQuery, searchResults, discover, ratings = [], onRate }) {
   const isSearching = searchQuery && searchResults.length === 0;
+  const animeList = searchResults.length ? searchResults : discover;
+
+  function getInitialRating(animeId) {
+    return ratings.find((rating) => rating.anime_id == animeId)?.raw_rating || 0;
+  }
 
   return (
     <main className="search-page">
@@ -161,8 +166,14 @@ function SearchPage({ searchQuery, searchResults, discover, onRate }) {
         {isSearching ? (
           <p className="app__info-block__title">Загрузка...</p>
         ) : (
-          (searchResults.length ? searchResults : discover).map((anime) => (
-            <AnimeCard key={anime.id} anime={anime} withRating={true} onRate={onRate} />
+          animeList.map((anime) => (
+            <AnimeCard
+              key={anime.id}
+              anime={anime}
+              withRating={true}
+              initialRating={getInitialRating(anime.id)}
+              onRate={onRate}
+            />
           ))
         )}
       </section>
@@ -237,6 +248,9 @@ function App() {
       const response = await getCurrentUser();
       if (response.user) {
         setUser(response.user);
+        if (!response.user.is_guest) {
+          localStorage.removeItem('guestLogin');
+        }
         await loadRatings();
         setAuthChecked(true);
         return;
@@ -381,6 +395,7 @@ function App() {
                 searchQuery={''}
                 searchResults={[]}
                 discover={discover}
+                ratings={ratings}
                 onRate={handleRate}
               />
             }
@@ -392,6 +407,7 @@ function App() {
                 searchQuery={searchQuery}
                 searchResults={searchResults}
                 discover={discover}
+                ratings={ratings}
                 onRate={handleRate}
               />
             }

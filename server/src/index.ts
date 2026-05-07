@@ -13,7 +13,7 @@ import {
   createGuestUser,
   findUserById,
   findUserByYandexId,
-  findUserByLogin,
+  findUserByAuthIdentity,
   getRatingsByUser,
   getUserMetrics,
   saveOrUpdateRating,
@@ -65,12 +65,16 @@ function getFileName(url: string) {
 // Helper to ensure session has a user (guest or real)
 // Returns userId and ensures the session is saved for new guest users
 async function ensureUser(req: express.Request, res: express.Response): Promise<number> {
-  if (req.session?.userId) return req.session.userId;
+  if (req.session?.userId && findUserById(req.session.userId)) return req.session.userId;
   const user = createGuestUser();
   req.session.userId = user.id;
   // Wait for session to be saved to ensure it persists across requests
   await new Promise<void>((resolve) => req.session.save(() => resolve()));
   return user.id;
+}
+
+function isGeneratedGuestLogin(login: string) {
+  return /^user\d{10}$/.test(login);
 }
 
 app.get('/api/image', async (req, res) => {
@@ -138,10 +142,10 @@ app.post('/auth/guest', (req, res) => {
 // Restore guest session from localStorage-stored login
 app.post('/auth/guest/restore', (req, res) => {
   const { login } = req.body as { login: string };
-  if (!login || !login.startsWith('guest_')) {
+  if (!login || !isGeneratedGuestLogin(login)) {
     return res.json({ user: null });
   }
-  const user = findUserByLogin(login);
+  const user = findUserByAuthIdentity('guest', login);
   if (!user || !user.is_guest) {
     return res.json({ user: null });
   }
@@ -188,7 +192,7 @@ app.get('/auth/yandex/callback', async (req, res) => {
         display_name: displayName,
         email: userInfo.data.default_email || null,
         picture: userInfo.data.profile_picture || userInfo.data.avatar_id || userInfo.data.default_avatar_id || null
-      });
+      }, { provider: 'yandex', providerUserId: yandexId });
     }
 
     // Transfer ratings from guest to real user
@@ -196,6 +200,8 @@ app.get('/auth/yandex/callback', async (req, res) => {
       const guestUser = findUserById(guestUserId);
       if (guestUser && (guestUser as any).is_guest) {
         transferRatings(guestUserId, user.id);
+        const ratings = getRatingsByUser(user.id);
+        saveUserMetrics(buildMetricsFromRatings(ratings));
       }
     }
 
