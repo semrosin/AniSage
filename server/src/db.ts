@@ -106,6 +106,29 @@ function columnExists(table: string, column: string) {
   return queryAll(`PRAGMA table_info(${table})`).some((row: any) => row.name === column);
 }
 
+function addColumnIfMissing(table: string, column: string, definition: string) {
+  if (!columnExists(table, column)) {
+    execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
+function migrateTableColumns() {
+  addColumnIfMissing('users', 'yandex_id', 'TEXT');
+  addColumnIfMissing('users', 'login', 'TEXT');
+  addColumnIfMissing('users', 'display_name', 'TEXT');
+  addColumnIfMissing('users', 'email', 'TEXT');
+  addColumnIfMissing('users', 'picture', 'TEXT');
+  addColumnIfMissing('users', 'is_guest', 'INTEGER DEFAULT 0');
+  addColumnIfMissing('users', 'created_at', 'TEXT');
+
+  addColumnIfMissing('user_ratings', 'image', 'TEXT');
+  addColumnIfMissing('user_ratings', 'year', 'INTEGER');
+  addColumnIfMissing('user_ratings', 'studios', 'TEXT');
+  addColumnIfMissing('user_ratings', 'genres', 'TEXT');
+  addColumnIfMissing('user_ratings', 'updated_at', 'TEXT');
+  addColumnIfMissing('user_ratings', 'was_recommended', 'BOOLEAN DEFAULT FALSE');
+}
+
 function migrateAuthIdentities() {
   if (columnExists('users', 'yandex_id')) {
     execute(`
@@ -127,6 +150,7 @@ export async function initDb() {
   }
 
   createSchema();
+  migrateTableColumns();
   migrateAuthIdentities();
   saveDb();
   await seedStudios();
