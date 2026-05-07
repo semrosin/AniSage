@@ -9,6 +9,8 @@ import { CiSearch } from "react-icons/ci";
 import { FaHeart, FaGithub } from "react-icons/fa6";
 import parser from "bbcode-to-react";
 
+const MIN_RATINGS_FOR_RECOMMENDATIONS = 5;
+
 function Header({ user, handleSearch, searchQuery, setSearchQuery }) {
   if (!user) return null;
   
@@ -149,7 +151,19 @@ function LoginPage({ error }) {
   );
 }
 
-function SearchPage({ searchQuery, searchResults, discover, ratings = [], onRate }) {
+function RatingRequirementNotice({ ratingsCount }) {
+  const ratingsLeft = Math.max(MIN_RATINGS_FOR_RECOMMENDATIONS - ratingsCount, 0);
+
+  return (
+    <section className="app__info-block__title-block">
+      <p className="app__info-block__title-block__title">
+        Пожалуйста, оцените ваши первые {MIN_RATINGS_FOR_RECOMMENDATIONS} аниме, чтобы получить рекомендации. Осталось оценить: {ratingsLeft}.
+      </p>
+    </section>
+  );
+}
+
+function SearchPage({ searchQuery, searchResults, discover, ratings = [], onRate, title, children }) {
   const isSearching = searchQuery && searchResults.length === 0;
   const animeList = searchResults.length ? searchResults : discover;
 
@@ -159,8 +173,12 @@ function SearchPage({ searchQuery, searchResults, discover, ratings = [], onRate
 
   return (
     <main className="search-page">
+      {children}
       {searchQuery && (
         <h2 className="search-page__title">Результаты поиска по запросу "{searchQuery}"</h2>
+      )}
+      {!searchQuery && title && (
+        <h2 className="search-page__title">{title}</h2>
       )}
       <section className="ratings-page__list">
         {isSearching ? (
@@ -182,7 +200,7 @@ function SearchPage({ searchQuery, searchResults, discover, ratings = [], onRate
 }
 
 function RecommendationsPage({ recommendations, ratings }) {
-  const hasEnoughRatings = ratings.length >= 5;
+  const hasEnoughRatings = ratings.length >= MIN_RATINGS_FOR_RECOMMENDATIONS;
   
   return (
     <main className="recommendations-page">
@@ -191,9 +209,7 @@ function RecommendationsPage({ recommendations, ratings }) {
       )}
 
       {!hasEnoughRatings ? (
-        <section className="app__info-block__title-block">
-          <p className="app__info-block__title-block__title">Пожалуйста, оцените ваши первые 5 аниме, чтобы получить рекомендации</p>
-        </section>
+        <RatingRequirementNotice ratingsCount={ratings.length} />
       ) : (
         <section className="anime-list">
           {recommendations.map((anime) => (
@@ -202,6 +218,33 @@ function RecommendationsPage({ recommendations, ratings }) {
       </section>
       )}
     </main>
+  );
+}
+
+function HomePage({ status, recommendations, discover, ratings, onRate }) {
+  if (status === 'loading') {
+    return (
+      <div className="app__loading">
+        <p className="app__info-block__title">Загрузка...</p>
+      </div>
+    );
+  }
+
+  if (ratings.length >= MIN_RATINGS_FOR_RECOMMENDATIONS) {
+    return <RecommendationsPage recommendations={recommendations} ratings={ratings} />;
+  }
+
+  return (
+    <SearchPage
+      searchQuery=""
+      searchResults={[]}
+      discover={discover}
+      ratings={ratings}
+      onRate={onRate}
+      title="Популярные аниме"
+    >
+      <RatingRequirementNotice ratingsCount={ratings.length} />
+    </SearchPage>
   );
 }
 
@@ -296,18 +339,19 @@ function App() {
   }
 
   async function loadRatings() {
-    try {
-      const response = await getRatings();
-      setRatings(response.ratings);
-      if (response.ratings.length < 5) {
-        const discoverResponse = await fetchDiscover();
-        setDiscover(discoverResponse.results);
-        return;
-      }
-      await loadRecommendations();
-    } finally {
-      setStatus('recommendations');
+    const response = await getRatings();
+    const nextRatings = response.ratings;
+    setRatings(nextRatings);
+
+    if (nextRatings.length < MIN_RATINGS_FOR_RECOMMENDATIONS) {
+      const discoverResponse = await fetchDiscover();
+      setDiscover(discoverResponse.results);
+      setRecommendations([]);
+      setStatus('discover');
+      return;
     }
+
+    await loadRecommendations();
   }
 
   async function loadRecommendations() {
@@ -358,7 +402,7 @@ function App() {
     return (
       <>
         <Header user={null} />
-        <div className="app">
+        <div className="app app--loading">
           <p className="app__info-block__title">Загрузка...</p>
         </div>
         <Footer />
@@ -381,9 +425,17 @@ function App() {
             path="/"
             element={
               !user ? (
-                <p className="app__info-block__title">Загрузка...</p>
+                <div className="app__loading">
+                  <p className="app__info-block__title">Загрузка...</p>
+                </div>
               ) : (
-                <Navigate to={status === 'recommendations' ? '/recommendations' : '/discover'} replace />
+                <HomePage
+                  status={status}
+                  recommendations={recommendations}
+                  discover={discover}
+                  ratings={ratings}
+                  onRate={handleRate}
+                />
               )
             }
           />
@@ -397,6 +449,7 @@ function App() {
                 discover={discover}
                 ratings={ratings}
                 onRate={handleRate}
+                title="Популярные аниме"
               />
             }
           />

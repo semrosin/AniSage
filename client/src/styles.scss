@@ -26,6 +26,7 @@ a {
 }
 
 .app {
+  display: flow-root;
   max-width: 1280px;
   min-height: 100vh;
   margin: 0 auto;
@@ -42,6 +43,26 @@ a {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
+}
+
+.app--loading,
+.app__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app--loading {
+  min-height: 100vh;
+}
+
+.app__loading {
+  min-height: 40vh;
+}
+
+.app--loading .app__info-block__title,
+.app__loading .app__info-block__title {
+  margin: 0;
 }
 
 .app__header {
