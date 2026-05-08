@@ -39,7 +39,7 @@ export default function RatingsPage({ user, ratings, onRate }) {
           <h1 className="ratings-page__name">{displayName}</h1>
           {user.is_guest ? (
             <p className="ratings-page__email">
-              <a href="/api/auth/login" className="ratings-page__login-link">Авторизуйтесь</a>, чтобы сохранить свои оценки
+              <a href="/login" className="ratings-page__login-link">Авторизуйтесь</a>, чтобы сохранить свои оценки
             </p>
           ) : (
             <p className="ratings-page__email">{user.email}</p>

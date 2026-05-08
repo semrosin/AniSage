@@ -6,7 +6,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
 import RatingsPage from './pages/RatingsPage.jsx';
 import { TbBrandYandex } from "react-icons/tb";
 import { CiSearch } from "react-icons/ci";
-import { FaHeart, FaGithub } from "react-icons/fa6";
+import { FaHeart } from "react-icons/fa6";
 import parser from "bbcode-to-react";
 
 const MIN_RATINGS_FOR_RECOMMENDATIONS = 5;
@@ -288,9 +288,6 @@ function Footer() {
         <NavLink to="/privacy" className="footer-link">Политика конфиденциальности</NavLink>
       </div>
       <div className="footer-right">
-        <a href="https://github.com/semrosin/AniSage" target="_blank" rel="noopener noreferrer" className="footer-icon">
-          <FaGithub size={22} />
-        </a>
         <a href="https://boosty.to/semrosin/donate" target="_blank" rel="noopener noreferrer" className="footer-icon footer-icon--heart">
           <FaHeart size={22} />
         </a>

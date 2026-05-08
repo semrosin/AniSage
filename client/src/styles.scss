@@ -161,7 +161,7 @@ a {
   padding: 54px;
   padding-top: 60px;
   height: 400px;
-  width: 330px;
+  width: 380px;
 
   @media screen and (max-width: 500px) {
     font-size: 1.1rem;
@@ -174,6 +174,7 @@ a {
 .search-page__title,
 .recommendations-page__title {
   margin: 0 0 20px;
+  text-align: center;
   font-size: 1.2rem;
   font-weight: 500;
   padding-bottom: 15px;
@@ -208,8 +209,13 @@ a {
   border-radius: 14px;
   cursor: pointer;
   transition: transform 0.18s ease, box-shadow 0.18s ease;
-  height: 40px;
-  width: 100%;
+  height: 38px;
+  width: 80%;
+
+  @media screen and (max-width: 380px) {
+    height: 32px;
+    width: 90%;
+  }
 }
 
 .login-card__button--disabled {
@@ -228,13 +234,20 @@ a {
 
 .login-card__privacy {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  width: 100%;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 16px;
+  width: fit-content;
+  max-width: 70%;
   color: #bbc1d2;
   font-size: 0.85rem;
   line-height: 1.4;
+  text-align: left;
   cursor: pointer;
+
+  @media screen and (max-width: 380px){
+    max-width: 90%;
+  }
 }
 
 .login-card__privacy input {
@@ -292,7 +305,7 @@ a {
   color: white;
 }
 
-.login-card__button:hover {
+.login-card__button:not(.login-card__button--disabled):hover {
   position: relative;
   transform: translateY(-1px);
   background: white;
