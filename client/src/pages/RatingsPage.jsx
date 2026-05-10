@@ -1,5 +1,6 @@
 import React from 'react';
 import AnimeCard from '../components/AnimeCard.jsx';
+import { RxExit } from 'react-icons/rx';
 
 const getPictureUrl = (pictureId) => 
   `https://avatars.yandex.net/get-yapic/${pictureId}/islands-200`;
@@ -16,7 +17,7 @@ function ratingToAnime(rating) {
   };
 }
 
-export default function RatingsPage({ user, ratings, onRate }) {
+export default function RatingsPage({ user, ratings, onRate, onLogout }) {
   if (!user) {
     return (
       <main className="ratings-page">
@@ -45,6 +46,12 @@ export default function RatingsPage({ user, ratings, onRate }) {
             <p className="ratings-page__email">{user.email}</p>
           )}
         </div>
+        {!user.is_guest && (
+          <button className="ratings-page__logout" type="button" onClick={onLogout} aria-label="Выйти">
+            <span className="ratings-page__logout-text">Выйти</span>
+            <RxExit className="ratings-page__logout-icon" size={20} />
+          </button>
+        )}
       </div>
       <section className="ratings-page__list">
         {ratings.length === 0 ? (

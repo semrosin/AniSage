@@ -221,6 +221,18 @@ app.get('/api/auth/me', (req, res) => {
   res.json({ user: user || null });
 });
 
+app.post('/api/auth/logout', (req, res) => {
+  if (!req.session) {
+    res.clearCookie('connect.sid');
+    return res.json({ success: true });
+  }
+
+  req.session.destroy(() => {
+    res.clearCookie('connect.sid');
+    res.json({ success: true });
+  });
+});
+
 app.get('/api/anime/search', async (req, res) => {
   const query = String(req.query.q || '');
   if (!query) {

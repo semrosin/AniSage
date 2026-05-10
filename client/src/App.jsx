@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, Navigate, Route, Routes, useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
-import { getCurrentUser, createGuest, restoreGuest, fetchDiscover, searchAnime, getRatings, saveRating, getRecommendations, getAnimeDetails } from './api.js';
+import { getCurrentUser, logout, createGuest, restoreGuest, fetchDiscover, searchAnime, getRatings, saveRating, getRecommendations, getAnimeDetails } from './api.js';
 import AnimeCard from './components/AnimeCard.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
 import RatingsPage from './pages/RatingsPage.jsx';
@@ -403,6 +403,24 @@ function App() {
     }
   }
 
+  async function handleLogout() {
+    setError('');
+    try {
+      await logout();
+      setUser(null);
+      setRatings([]);
+      setDiscover([]);
+      setRecommendations([]);
+      setSearchResults([]);
+      setStatus('loading');
+      setAuthChecked(false);
+      navigate('/', { replace: true });
+      await loadUser();
+    } catch (err) {
+      setError('Не удалось выйти. Попробуйте ещё раз.');
+    }
+  }
+
   function setSearchQuery(value) {
     const params = new URLSearchParams(location.search);
     if (value) {
@@ -502,6 +520,7 @@ function App() {
                 user={user}
                 ratings={ratings}
                 onRate={handleRate}
+                onLogout={handleLogout}
               />
             }
           />

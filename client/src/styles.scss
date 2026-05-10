@@ -581,6 +581,7 @@ a {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    min-width: 0;
   }
 
   &__name {
@@ -597,6 +598,50 @@ a {
     margin: 0;
     color: #adadc2;
     font-size: 0.95rem;
+    overflow-wrap: anywhere;
+  }
+
+  &__logout {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-left: auto;
+    align-self: flex-end;
+    padding: 8px 0;
+    border: none;
+    background: transparent;
+    color: #fd5858;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: color 200ms ease, transform 160ms ease;
+
+    &:hover {
+      transform: translateY(-1px);
+    }
+
+    @media screen and (max-width: 500px) {
+      flex: 0 0 40px;
+      width: 40px;
+      height: 40px;
+      padding: 0;
+    }
+  }
+
+  &__logout-icon {
+    flex: 0 0 auto;
+  }
+
+  &__logout-text {
+    @media screen and (max-width: 500px) {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+    }
   }
 
   &__login-link {

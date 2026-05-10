@@ -20,6 +20,10 @@ export function getCurrentUser() {
   return request(`${API_PREFIX}/auth/me`);
 }
 
+export function logout() {
+  return request(`${API_PREFIX}/auth/logout`, { method: 'POST' });
+}
+
 export function createGuest() {
   return request(`${API_PREFIX}/auth/guest`, { method: 'POST' });
 }
