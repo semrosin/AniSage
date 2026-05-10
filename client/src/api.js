@@ -46,11 +46,17 @@ function mapAnimeFields(item) {
   };
 }
 
+function hasPreviewImage(anime) {
+  const image = anime.image || '';
+  const decodedImage = decodeURIComponent(image);
+  return image && !decodedImage.includes('missing_preview.jpg');
+}
+
 export async function fetchDiscover() {
   const data = await request(`${API_PREFIX}/anime/discover`);
   return {
     ...data,
-    results: data.results?.map(mapAnimeFields) || []
+    results: data.results?.map(mapAnimeFields).filter(hasPreviewImage) || []
   };
 }
 
