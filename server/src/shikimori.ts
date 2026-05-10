@@ -6,9 +6,8 @@ const MAX_FETCH_RETRIES = 3;
 const FETCH_RETRY_DELAY_MS = 500;
 const MAX_CONCURRENT_ENRICH = 5;
 const RECOMMENDATION_CANDIDATE_SOURCES = [
-  { order: 'popularity', limit: 25 },
+  { order: 'popularity', limit: 35 },
   { order: 'ranked', limit: 15 },
-  { order: 'ranked_random', limit: 10 },
 ];
 
 const animeCache = new Map<number, AnimeSummary>();
