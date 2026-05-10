@@ -1,22 +1,4 @@
 #!/bin/bash
+sqlite3 -noheader -batch server.db "SELECT AVG(raw_rating) FROM user_ratings WHERE user_id != 7 AND (was_recommended = 1 OR was_recommended = 'true');"
 
-# Скрипт для вычисления средней оценки (raw_rating) из pipe-разделённых данных
-# Поле raw_rating должно быть 9-м по счёту (считая с 1)
-
-awk -F '|' '
-{
-    # Пропускаем строки, где 9-е поле не является числом
-    if ($9 ~ /^-?[0-9]+$/) {
-        sum += $9;
-        count++;
-    }
-}
-END {
-    if (count > 0) {
-        avg = sum / count;
-        # Выводим с двумя знаками после запятой (можно изменить формат)
-        printf "Средняя оценка: %.2f (на основе %d оценок)\n", avg, count;
-    } else {
-        print "Нет оценок для подсчёта";
-    }
-}' "$@"
+sqlite3 -noheader -batch server.db "SELECT COUNT(raw_rating) FROM user_ratings WHERE user_id != 7 AND (was_recommended = 1 OR was_recommended = 'true');"
