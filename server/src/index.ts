@@ -15,7 +15,6 @@ import {
   findUserByYandexId,
   findUserByAuthIdentity,
   getRatingsByUser,
-  getUserMetrics,
   saveOrUpdateRating,
   saveUserMetrics,
   getStudioSimilarities,
@@ -325,10 +324,8 @@ app.get('/api/recommendations', async (req, res) => {
   if (ratings.length < 5) {
     return res.status(400).json({ error: 'Please rate at least 5 anime to see recommendations.' });
   }
-  const metrics = getUserMetrics(userId);
-  if (!metrics) {
-    return res.status(500).json({ error: 'Metrics not available' });
-  }
+  const metrics = buildMetricsFromRatings(ratings);
+  saveUserMetrics(metrics);
 
   try {
     const candidates = await getEnoughCandidates(new Set(ratings.map(r => r.anime_id)));
