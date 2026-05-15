@@ -1,5 +1,12 @@
 import { UserMetrics, AnimeSummary, UserRating } from './types';
 
+type FeatureVector = Record<string, number>;
+
+const FEATURE_WEIGHTS = {
+  genre: 1,
+  studio: 1
+};
+
 export function normalizeRating(value: number): number {
   if (value < 1 || value > 10) {
     throw new Error('Rating must be between 1 and 10');
@@ -9,6 +16,66 @@ export function normalizeRating(value: number): number {
     return value - 6;
   }
   return value - 5;
+}
+
+function addVectorValue(vector: FeatureVector, key: string, value: number) {
+  if (!Number.isFinite(value) || value === 0) return;
+  vector[key] = (vector[key] || 0) + value;
+}
+
+function getUniqueValues(values: string[]): string[] {
+  return Array.from(new Set(values.map(value => value.trim()).filter(Boolean)));
+}
+
+function addNormalizedGroupFeatures(
+  vector: FeatureVector,
+  prefix: 'genre' | 'studio',
+  values: string[],
+  weight: number
+) {
+  const uniqueValues = getUniqueValues(values);
+  if (uniqueValues.length === 0) return;
+
+  const featureValue = weight / Math.sqrt(uniqueValues.length);
+  uniqueValues.forEach(value => {
+    addVectorValue(vector, `${prefix}:${value}`, featureValue);
+  });
+}
+
+export function buildAnimeVector(anime: Pick<AnimeSummary | UserRating, 'genres' | 'studios'>): FeatureVector {
+  const vector: FeatureVector = {};
+  addNormalizedGroupFeatures(vector, 'genre', anime.genres || [], FEATURE_WEIGHTS.genre);
+  addNormalizedGroupFeatures(vector, 'studio', anime.studios || [], FEATURE_WEIGHTS.studio);
+  return vector;
+}
+
+function buildUserVector(metrics: UserMetrics): FeatureVector {
+  const vector: FeatureVector = {};
+  Object.entries(metrics.genre_sums).forEach(([genre, weight]) => {
+    addVectorValue(vector, `genre:${genre}`, weight);
+  });
+  Object.entries(metrics.studio_weights).forEach(([studio, weight]) => {
+    addVectorValue(vector, `studio:${studio}`, weight);
+  });
+  return vector;
+}
+
+function cosineSimilarity(left: FeatureVector, right: FeatureVector): number {
+  let dot = 0;
+  let leftNormSq = 0;
+  let rightNormSq = 0;
+
+  Object.values(left).forEach(value => {
+    leftNormSq += value * value;
+  });
+
+  Object.entries(right).forEach(([key, value]) => {
+    dot += (left[key] || 0) * value;
+    rightNormSq += value * value;
+  });
+
+  if (leftNormSq === 0 || rightNormSq === 0) return 0;
+  return dot / (Math.sqrt(leftNormSq) * Math.sqrt(rightNormSq));
 }
 
 export function buildMetricsFromRatings(ratings: UserRating[]): UserMetrics {
@@ -25,23 +92,29 @@ export function buildMetricsFromRatings(ratings: UserRating[]): UserMetrics {
   };
 
   ratings.forEach(rating => {
-    metrics.total_score += rating.rating_normalized;
     if (rating.rating_normalized > 0) {
       metrics.positive_count += 1;
+      metrics.total_score += rating.rating_normalized;
       if (rating.year) {
         metrics.year_weight_sum += rating.rating_normalized * rating.year;
         metrics.year_weight_sq_sum += rating.rating_normalized * rating.year * rating.year;
       }
     }
 
-    rating.genres.forEach(genre => {
-      metrics.genre_sums[genre] = (metrics.genre_sums[genre] || 0) + rating.rating_normalized;
+    getUniqueValues(rating.genres).forEach(genre => {
       metrics.genre_counts[genre] = (metrics.genre_counts[genre] || 0) + 1;
     });
 
-    const studioWeight = rating.studios.length ? 1 / rating.studios.length : 0;
-    rating.studios.forEach(studio => {
-      metrics.studio_weights[studio] = (metrics.studio_weights[studio] || 0) + rating.rating_normalized * studioWeight;
+    Object.entries(buildAnimeVector(rating)).forEach(([feature, value]) => {
+      const weightedValue = rating.rating_normalized * value;
+      if (feature.startsWith('genre:')) {
+        const genre = feature.slice('genre:'.length);
+        metrics.genre_sums[genre] = (metrics.genre_sums[genre] || 0) + weightedValue;
+      }
+      if (feature.startsWith('studio:')) {
+        const studio = feature.slice('studio:'.length);
+        metrics.studio_weights[studio] = (metrics.studio_weights[studio] || 0) + weightedValue;
+      }
     });
   });
 
@@ -49,13 +122,11 @@ export function buildMetricsFromRatings(ratings: UserRating[]): UserMetrics {
 }
 
 export function computeGenreWeight(genre: string, metrics: UserMetrics): number {
-  const total = metrics.genre_sums[genre] || 0;
-  const count = metrics.genre_counts[genre] || 0;
-  return Math.log2(count + 1) * total;
+  return metrics.genre_sums[genre] || 0;
 }
 
 export function computeYearCenter(metrics: UserMetrics) {
-  const positiveSum = metrics.positive_count;
+  const positiveSum = metrics.total_score;
   const priorVariance = 16;
   const scalingM = 5;
   if (positiveSum === 0 || metrics.year_weight_sum === 0) {
@@ -70,34 +141,38 @@ export function computeYearCenter(metrics: UserMetrics) {
   return { mu, sigma2 };
 }
 
-export function computeYearScore(year: number | undefined, mu: number, sigma2: number): number {
+export function computeYearScore(year: number | null | undefined, mu: number, sigma2: number): number {
   if (!year) return 0.85;
   return Math.exp(-Math.pow(year - mu, 2) / (2 * sigma2));
 }
 
-export function computeStudioScore(candidate: AnimeSummary, metrics: UserMetrics, similarityMatrix: Record<string, Record<string, number>>): number {
-  if (!candidate.studios.length || Object.keys(metrics.studio_weights).length === 0) {
-    return 0;
-  }
-
-  return candidate.studios.reduce((acc, candidateStudio) => {
-    const userStudioScores = Object.entries(metrics.studio_weights);
-    const studioSim = similarityMatrix[candidateStudio] || {};
-    const studioScore = userStudioScores.reduce((sum, [userStudio, weight]) => {
-      const similarity = studioSim[userStudio] ?? 0.05;
-      return sum + weight * similarity;
-    }, 0);
-    return acc + studioScore;
-  }, 0) / Math.max(candidate.studios.length, 1);
+export function computeVectorSimilarity(candidate: AnimeSummary, metrics: UserMetrics): number {
+  return cosineSimilarity(buildUserVector(metrics), buildAnimeVector(candidate));
 }
 
-export function scoreAnime(candidate: AnimeSummary, metrics: UserMetrics, similarityMatrix: Record<string, Record<string, number>>): number {
+export function computeStudioScore(
+  candidate: AnimeSummary,
+  metrics: UserMetrics,
+  _similarityMatrix?: Record<string, Record<string, number>>
+): number {
+  const userStudioVector: FeatureVector = {};
+  const candidateStudioVector: FeatureVector = {};
+  Object.entries(metrics.studio_weights).forEach(([studio, weight]) => {
+    addVectorValue(userStudioVector, `studio:${studio}`, weight);
+  });
+  addNormalizedGroupFeatures(candidateStudioVector, 'studio', candidate.studios || [], FEATURE_WEIGHTS.studio);
+  return cosineSimilarity(userStudioVector, candidateStudioVector);
+}
+
+export function scoreAnime(
+  candidate: AnimeSummary,
+  metrics: UserMetrics,
+  _similarityMatrix?: Record<string, Record<string, number>>
+): number {
   const { mu, sigma2 } = computeYearCenter(metrics);
   const yearScore = computeYearScore(candidate.year, mu, sigma2);
-  const genreScore = candidate.genres.reduce((sum, genre) => sum + computeGenreWeight(genre, metrics), 0);
-  const studioScore = computeStudioScore(candidate, metrics, similarityMatrix);
-  const beta = 0.55;
-  return genreScore * yearScore + beta * studioScore;
+  const similarityScore = computeVectorSimilarity(candidate, metrics);
+  return similarityScore * yearScore;
 }
 
 export function buildRecommendations(
