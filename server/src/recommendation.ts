@@ -7,6 +7,12 @@ const FEATURE_WEIGHTS = {
   studio: 1
 };
 
+const POPULARITY_WEIGHT = {
+  minMultiplier: 0.65,
+  maxMultiplier: 1.35,
+  neutralScore: 7.0
+};
+
 export function normalizeRating(value: number): number {
   if (value < 1 || value > 10) {
     throw new Error('Rating must be between 1 and 10');
@@ -150,6 +156,26 @@ export function computeVectorSimilarity(candidate: AnimeSummary, metrics: UserMe
   return cosineSimilarity(buildUserVector(metrics), buildAnimeVector(candidate));
 }
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+export function computePopularityMultiplier(score: number | null | undefined): number {
+  const normalizedScore = clamp(Number(score || 0), 0, 10);
+  if (normalizedScore <= 0) return POPULARITY_WEIGHT.minMultiplier;
+
+  const centeredScore = (normalizedScore - POPULARITY_WEIGHT.neutralScore) / (10 - POPULARITY_WEIGHT.neutralScore);
+  const curvedScore = Math.sign(centeredScore) * Math.pow(Math.abs(centeredScore), 1.35);
+  const range = POPULARITY_WEIGHT.maxMultiplier - POPULARITY_WEIGHT.minMultiplier;
+  const midpoint = POPULARITY_WEIGHT.minMultiplier + range / 2;
+
+  return clamp(
+    midpoint + curvedScore * range / 2,
+    POPULARITY_WEIGHT.minMultiplier,
+    POPULARITY_WEIGHT.maxMultiplier
+  );
+}
+
 export function computeStudioScore(
   candidate: AnimeSummary,
   metrics: UserMetrics,
@@ -172,7 +198,60 @@ export function scoreAnime(
   const { mu, sigma2 } = computeYearCenter(metrics);
   const yearScore = computeYearScore(candidate.year, mu, sigma2);
   const similarityScore = computeVectorSimilarity(candidate, metrics);
-  return similarityScore * yearScore;
+  const popularityMultiplier = computePopularityMultiplier(candidate.score);
+  return similarityScore * yearScore * popularityMultiplier;
+}
+
+function normalizeTitleForSeries(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/ё/g, 'е')
+    .replace(/[“”"«»'`]/g, '')
+    .replace(/\([^)]*\)|\[[^\]]*\]/g, ' ')
+    .replace(/[._]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function removeSeasonSuffix(title: string): string {
+  let value = normalizeTitleForSeries(title);
+
+  value = value
+    .replace(/\s*[:\-–—]\s*\d+(?:st|nd|rd|th)?\s*(season|сезон|cour|курс).*/i, '')
+    .replace(/\s*[:\-–—]\s*(season|сезон|cour|курс)\s*\d+.*$/i, '')
+    .replace(/\s*[:\-–—]\s*(season|сезон)\s*\d+.*$/i, '')
+    .replace(/\s*[:\-–—]\s*\d+\s*(season|сезон).*/i, '')
+    .replace(/\s*[:\-–—]\s*(final|финал|финальный|последний).*(season|сезон|part|часть)?.*$/i, '')
+    .replace(/\s*[:\-–—]\s*(part|часть)\s*\d+.*$/i, '')
+    .replace(/\s*[:\-–—]\s*\d+$/i, '')
+    .replace(/\s+(season|сезон)\s*\d+.*$/i, '')
+    .replace(/\s+\d+\s*(season|сезон).*/i, '')
+    .replace(/\s+(?:тв|tv)\s*\d+.*$/i, '')
+    .replace(/\s+(part|часть)\s*\d+.*$/i, '')
+    .replace(/\s+(?:part|часть|cour|курс)\s*\d+.*$/i, '')
+    .replace(/\s+(i{2,3}|iv|v|vi{0,3}|ix|x)$/i, '')
+    .replace(/\s+\d+$/i, '')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return value || normalizeTitleForSeries(title);
+}
+
+function looksLikeContinuation(title: string): boolean {
+  const value = normalizeTitleForSeries(title);
+  return (
+    /\s*[:\-–—]\s*\d+$/i.test(value) ||
+    /\s+\d+$/i.test(value) ||
+    /\s+(?:season|сезон|part|часть|cour|курс)\s*\d+/i.test(value) ||
+    /\s+\d+\s*(?:season|сезон|part|часть|cour|курс)/i.test(value) ||
+    /\s+(?:тв|tv)\s*\d+/i.test(value) ||
+    /\s+(?:ii|iii|iv|v|vi{0,3}|ix|x)$/i.test(value)
+  );
+}
+
+function getRecommendationSeriesKey(anime: Pick<AnimeSummary | UserRating, 'title'>) {
+  return removeSeasonSuffix(anime.title);
 }
 
 export function buildRecommendations(
@@ -182,13 +261,29 @@ export function buildRecommendations(
   similarityMatrix: Record<string, Record<string, number>>
 ) {
   const ratedIds = new Set(ratings.map(item => item.anime_id));
-  return candidates
+  const ratedSeriesKeys = new Set(ratings.map(getRecommendationSeriesKey));
+  const recommendedSeriesKeys = new Set<string>();
+
+  const scoredCandidates = candidates
     .filter(candidate => !ratedIds.has(candidate.id))
+    .filter(candidate => !looksLikeContinuation(candidate.title))
     .map(candidate => ({
       anime: candidate,
       score: scoreAnime(candidate, metrics, similarityMatrix)
     }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 50)
-    .map(item => ({ ...item.anime, score: item.score }));
+    .sort((a, b) => b.score - a.score);
+
+  const recommendations: Array<AnimeSummary & { score: number }> = [];
+  for (const item of scoredCandidates) {
+    const seriesKey = getRecommendationSeriesKey(item.anime);
+    if (ratedSeriesKeys.has(seriesKey) || recommendedSeriesKeys.has(seriesKey)) {
+      continue;
+    }
+
+    recommendedSeriesKeys.add(seriesKey);
+    recommendations.push({ ...item.anime, score: item.score });
+    if (recommendations.length >= 24) break;
+  }
+
+  return recommendations;
 }

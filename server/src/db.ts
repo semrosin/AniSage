@@ -2,7 +2,7 @@ import initSqlJs, { Database } from 'sql.js';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
-import { AuthIdentity, User, UserMetrics, UserRating } from './types';
+import { AnimeSummary, AuthIdentity, User, UserMetrics, UserRating } from './types';
 
 const dbPath = path.resolve(process.cwd(), 'server.db');
 let db: Database;
@@ -99,6 +99,61 @@ function createSchema() {
       );
 
       CREATE INDEX IF NOT EXISTS idx_auth_identities_user_id ON auth_identities(user_id);
+
+      CREATE TABLE IF NOT EXISTS shikimori_anime (
+        id INTEGER PRIMARY KEY,
+        name TEXT,
+        russian TEXT,
+        title TEXT,
+        kind TEXT,
+        score REAL,
+        status TEXT,
+        episodes INTEGER,
+        episodes_aired INTEGER,
+        aired_on TEXT,
+        released_on TEXT,
+        year INTEGER,
+        rating TEXT,
+        english TEXT,
+        synonyms TEXT,
+        license_name_ru TEXT,
+        description TEXT,
+        description_html TEXT,
+        image_url TEXT,
+        image_original_url TEXT,
+        image_preview_url TEXT,
+        image_x96_url TEXT,
+        image_x48_url TEXT,
+        image_local_path TEXT,
+        image_local_url TEXT,
+        image_content_type TEXT,
+        image_size_bytes INTEGER,
+        genres TEXT DEFAULT '[]',
+        genre_ids TEXT DEFAULT '[]',
+        studios TEXT DEFAULT '[]',
+        studio_ids TEXT DEFAULT '[]',
+        country TEXT,
+        raw_json TEXT,
+        imported_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS shikimori_import_runs (
+        id INTEGER PRIMARY KEY,
+        started_at TEXT NOT NULL,
+        finished_at TEXT,
+        status TEXT NOT NULL,
+        total_seen INTEGER DEFAULT 0,
+        total_imported INTEGER DEFAULT 0,
+        total_images INTEGER DEFAULT 0,
+        total_image_bytes INTEGER DEFAULT 0,
+        error TEXT
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_shikimori_anime_title ON shikimori_anime(title);
+      CREATE INDEX IF NOT EXISTS idx_shikimori_anime_russian ON shikimori_anime(russian);
+      CREATE INDEX IF NOT EXISTS idx_shikimori_anime_name ON shikimori_anime(name);
+      CREATE INDEX IF NOT EXISTS idx_shikimori_anime_score ON shikimori_anime(score);
+      CREATE INDEX IF NOT EXISTS idx_shikimori_anime_year ON shikimori_anime(year);
     `);
 }
 
@@ -253,6 +308,33 @@ function serializeRow(row: any) {
     ...row,
     studios: row.studios ? JSON.parse(row.studios) : [],
     genres: row.genres ? JSON.parse(row.genres) : []
+  };
+}
+
+function parseJsonArray(value: unknown): string[] {
+  if (!value || typeof value !== 'string') return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter(item => typeof item === 'string' && item.trim()) : [];
+  } catch {
+    return [];
+  }
+}
+
+function serializeAnime(row: any): AnimeSummary | undefined {
+  if (!row) return undefined;
+  return {
+    id: Number(row.id),
+    title: row.title || row.russian || row.name || String(row.id),
+    image: row.image_local_url || row.image_url || row.image_preview_url || row.image_original_url || '',
+    year: row.year ? Number(row.year) : undefined,
+    genres: parseJsonArray(row.genres),
+    studios: parseJsonArray(row.studios),
+    score: row.score ? Number(row.score) : 0,
+    episodes: row.episodes ?? null,
+    status: row.status || null,
+    country: row.country || null,
+    description: row.description || ''
   };
 }
 
@@ -427,6 +509,52 @@ export function getRatingsByUser(userId: number): UserRating[] {
     studios: JSON.parse(row.studios || '[]'),
     genres: JSON.parse(row.genres || '[]')
   }));
+}
+
+export function findAnimeById(animeId: number): AnimeSummary | undefined {
+  return serializeAnime(queryGet('SELECT * FROM shikimori_anime WHERE id = ?', [animeId]));
+}
+
+export function searchAnimeCatalog(query: string, limit = 50): AnimeSummary[] {
+  const normalizedQuery = `%${query.trim().toLowerCase()}%`;
+  return queryAll(
+    `SELECT *
+     FROM shikimori_anime
+     WHERE LOWER(COALESCE(title, '')) LIKE ?
+        OR LOWER(COALESCE(russian, '')) LIKE ?
+        OR LOWER(COALESCE(name, '')) LIKE ?
+        OR LOWER(COALESCE(synonyms, '')) LIKE ?
+        OR LOWER(COALESCE(english, '')) LIKE ?
+     ORDER BY COALESCE(score, 0) DESC, COALESCE(year, 0) DESC, id ASC
+     LIMIT ?`,
+    [normalizedQuery, normalizedQuery, normalizedQuery, normalizedQuery, normalizedQuery, limit]
+  ).map(serializeAnime).filter(Boolean) as AnimeSummary[];
+}
+
+export function getPopularAnimeFromCatalog(limit = 40): AnimeSummary[] {
+  return queryAll(
+    `SELECT *
+     FROM shikimori_anime
+     WHERE COALESCE(image_local_url, image_url, image_preview_url, image_original_url, '') != ''
+     ORDER BY COALESCE(score, 0) DESC, COALESCE(year, 0) DESC, id ASC
+     LIMIT ?`,
+    [limit]
+  ).map(serializeAnime).filter(Boolean) as AnimeSummary[];
+}
+
+export function getRecommendationCandidatesFromCatalog(userRatedIds: Set<number>): AnimeSummary[] {
+  const rows = queryAll(
+    `SELECT *
+     FROM shikimori_anime
+     WHERE COALESCE(genres, '[]') != '[]'
+        OR COALESCE(studios, '[]') != '[]'
+     ORDER BY COALESCE(score, 0) DESC, id ASC`
+  );
+  return rows
+    .map(serializeAnime)
+    .filter((anime): anime is AnimeSummary => {
+      return anime !== undefined && !userRatedIds.has(anime.id);
+    });
 }
 
 export function getUserMetrics(userId: number): UserMetrics | undefined {

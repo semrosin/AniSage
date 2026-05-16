@@ -47,7 +47,7 @@ function parseArgs(argv: string[]): ImportOptions {
   const serverRoot = process.cwd();
   const options: ImportOptions = {
     dbPath: path.resolve(serverRoot, 'server.db'),
-    imagesDir: path.resolve(serverRoot, 'dist', 'uploads', 'images'),
+    imagesDir: path.resolve(serverRoot, 'uploads', 'images'),
     pageLimit: DEFAULT_PAGE_LIMIT,
     requestDelayMs: DEFAULT_REQUEST_DELAY_MS,
     detailsConcurrency: DEFAULT_DETAILS_CONCURRENCY,

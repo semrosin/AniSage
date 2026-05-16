@@ -18,10 +18,13 @@ import {
   saveOrUpdateRating,
   saveUserMetrics,
   getStudioSimilarities,
-  transferRatings
+  transferRatings,
+  findAnimeById,
+  searchAnimeCatalog,
+  getPopularAnimeFromCatalog,
+  getRecommendationCandidatesFromCatalog
 } from './db';
 import { normalizeRating, buildMetricsFromRatings, buildRecommendations } from './recommendation';
-import { fetchAnimeById, searchAnime, fetchPopularAnime, enrichCandidates, getEnoughCandidates } from './shikimori';
 import { UserRating } from './types';
 
 dotenv.config();
@@ -31,6 +34,12 @@ const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
 const YANDEX_CLIENT_ID = process.env.YANDEX_CLIENT_ID;
 const YANDEX_CLIENT_SECRET = process.env.YANDEX_CLIENT_SECRET;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'change-me';
+const IMAGES_DIR = path.resolve(__dirname, '..', 'uploads', 'images');
+const LEGACY_IMAGE_DIRS = [
+  IMAGES_DIR,
+  path.resolve(__dirname, 'uploads', 'images'),
+  path.resolve(__dirname, '..', 'dist', 'uploads', 'images')
+];
 
 if (!YANDEX_CLIENT_ID || !YANDEX_CLIENT_SECRET) {
   console.warn('YANDEX_CLIENT_ID and YANDEX_CLIENT_SECRET should be set in server/.env');
@@ -61,6 +70,14 @@ function getFileName(url: string) {
   return crypto.createHash('md5').update(url).digest('hex') + '.jpg';
 }
 
+function findLocalImage(fileName: string) {
+  for (const dir of LEGACY_IMAGE_DIRS) {
+    const filePath = path.join(dir, fileName);
+    if (fs.existsSync(filePath)) return filePath;
+  }
+  return null;
+}
+
 // Helper to ensure session has a user (guest or real)
 // Returns userId and ensures the session is saved for new guest users
 async function ensureUser(req: express.Request, res: express.Response): Promise<number> {
@@ -77,49 +94,36 @@ function isGeneratedGuestLogin(login: string) {
 }
 
 app.get('/api/image', async (req, res) => {
-  const url = decodeURIComponent(req.query.url as string);
+  const rawUrl = typeof req.query.url === 'string' ? req.query.url : '';
+  const url = rawUrl ? decodeURIComponent(rawUrl) : '';
 
   if (!url) {
     return res.status(400).send('No URL');
   }
   
-  const dir = path.join(__dirname, 'uploads/images');
-
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  if (!fs.existsSync(IMAGES_DIR)) {
+    fs.mkdirSync(IMAGES_DIR, { recursive: true });
   }
-  const fileName = getFileName(url);
-  const filePath = path.join(dir, fileName);
 
-  if (fs.existsSync(filePath)) {
+  if (url.startsWith('/images/')) {
+    const filePath = findLocalImage(path.basename(url));
+    if (filePath) {
+      return res.sendFile(filePath);
+    }
+    return res.status(404).send('Image not found');
+  }
+
+  const fileName = getFileName(url);
+  const filePath = findLocalImage(fileName);
+
+  if (filePath) {
     return res.sendFile(filePath);
   }
 
-  try {
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0',
-        'Referer': 'https://shikimori.one/'
-      }
-    });
-
-    if (!response.ok) {
-      return res.status(500).send('Failed to fetch image');
-    }
-
-    const buffer = Buffer.from(await response.arrayBuffer());
-
-    fs.writeFileSync(filePath, buffer);
-
-    res.set('Content-Type', response.headers.get('content-type') || 'image/jpeg');
-    res.send(buffer);
-
-  } catch (err) {
-    res.status(500).send('Error loading image');
-  }
+  return res.status(404).send('Image is not in local cache');
 });
 
-app.use('/images', express.static(path.join(__dirname, 'uploads/images')));
+app.use('/images', express.static(IMAGES_DIR));
 app.use('/public/images', express.static(path.join(__dirname, '..', 'public', 'images')));
 
 app.get('/api/auth/login', (req, res) => {
@@ -238,7 +242,7 @@ app.get('/api/anime/search', async (req, res) => {
     return res.status(400).json({ error: 'Search query required' });
   }
   try {
-    const results = await searchAnime(query);
+    const results = searchAnimeCatalog(query);
     res.json({ results });
   } catch (error) {
     console.error('Search anime failed', error);
@@ -248,7 +252,7 @@ app.get('/api/anime/search', async (req, res) => {
 
 app.get('/api/anime/discover', async (req, res) => {
   try {
-    const results = await fetchPopularAnime(40);
+    const results = getPopularAnimeFromCatalog(40);
     res.json({ results });
   } catch (error) {
     console.error('Discover anime failed', error);
@@ -263,7 +267,10 @@ app.get('/api/anime/:id', async (req, res) => {
   }
 
   try {
-    const anime = await fetchAnimeById(animeId);
+    const anime = findAnimeById(animeId);
+    if (!anime) {
+      return res.status(404).json({ error: 'Anime not found' });
+    }
     res.json(anime);
   } catch (e) {
     res.status(404).json({ error: 'Anime not found' });
@@ -291,7 +298,10 @@ app.post('/api/ratings', async (req, res) => {
   }
 
   try {
-    const anime = await fetchAnimeById(animeId);
+    const anime = findAnimeById(animeId);
+    if (!anime) {
+      return res.status(404).json({ error: 'Anime not found' });
+    }
     const normalized = normalizeRating(rating);
     const ratingRow: UserRating = {
       user_id: userId,
@@ -328,9 +338,8 @@ app.get('/api/recommendations', async (req, res) => {
   saveUserMetrics(metrics);
 
   try {
-    const candidates = await getEnoughCandidates(new Set(ratings.map(r => r.anime_id)));
-    const enrichedCandidates = await enrichCandidates(candidates);
-    const recommendations = buildRecommendations(enrichedCandidates, ratings, metrics, similarityMatrix);
+    const candidates = getRecommendationCandidatesFromCatalog(new Set(ratings.map(r => r.anime_id)));
+    const recommendations = buildRecommendations(candidates, ratings, metrics, similarityMatrix);
     res.json({ recommendations });
   } catch (error) {
     console.error('Recommendations failed', error);
