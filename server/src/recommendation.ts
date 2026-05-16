@@ -8,9 +8,9 @@ const FEATURE_WEIGHTS = {
 };
 
 const POPULARITY_WEIGHT = {
-  minMultiplier: 0.55,
-  maxMultiplier: 1.45,
-  neutralScore: 7.2
+  minMultiplier: 0.65,
+  maxMultiplier: 1.35,
+  neutralScore: 7.0
 };
 
 export function normalizeRating(value: number): number {
@@ -282,7 +282,7 @@ export function buildRecommendations(
 
     recommendedSeriesKeys.add(seriesKey);
     recommendations.push({ ...item.anime, score: item.score });
-    if (recommendations.length >= 50) break;
+    if (recommendations.length >= 24) break;
   }
 
   return recommendations;
