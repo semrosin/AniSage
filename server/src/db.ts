@@ -321,12 +321,122 @@ function parseJsonArray(value: unknown): string[] {
   }
 }
 
+function isMissingImageUrl(value: unknown) {
+  return typeof value === 'string' && /\/assets\/globals\/missing_[^/.]+\./i.test(value);
+}
+
+function getAnimeImageSources(row: any) {
+  return [
+    row.image_url,
+    row.image_preview_url,
+    row.image_original_url,
+    row.image_x96_url,
+    row.image_x48_url
+  ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+}
+
+function hasUsableAnimeImage(row: any) {
+  return getAnimeImageSources(row).some(image => !isMissingImageUrl(image));
+}
+
+function getAnimeImage(row: any) {
+  const sourceImages = getAnimeImageSources(row);
+  return row.image_local_url || sourceImages[0] || '';
+}
+
+function normalizeSearchText(value: unknown) {
+  return String(value || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/ё/g, 'е')
+    .replace(/Ё/g, 'е')
+    .toLowerCase()
+    .replace(/[^a-zа-я0-9]+/gi, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+function compactSearchText(value: string) {
+  return value.replace(/\s+/g, '');
+}
+
+function parseSearchAliases(value: unknown): string[] {
+  if (!value || typeof value !== 'string') return [];
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) {
+      return parsed
+        .map(item => String(item || '').trim())
+        .filter(Boolean);
+    }
+  } catch {
+    // Older rows can contain plain strings, keep them searchable.
+  }
+  return value
+    .split(/[,;\n]/)
+    .map(item => item.trim())
+    .filter(Boolean);
+}
+
+function getSearchFields(row: any) {
+  return [
+    row.title,
+    row.russian,
+    row.name,
+    row.license_name_ru,
+    ...parseSearchAliases(row.english),
+    ...parseSearchAliases(row.synonyms)
+  ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+}
+
+function scoreSearchRow(row: any, query: string) {
+  const normalizedQuery = normalizeSearchText(query);
+  if (!normalizedQuery) return 0;
+
+  const queryTokens = normalizedQuery.split(' ').filter(Boolean);
+  const compactQuery = compactSearchText(normalizedQuery);
+  const fields = getSearchFields(row);
+  const normalizedFields = fields.map(field => normalizeSearchText(field)).filter(Boolean);
+  const combinedField = normalizeSearchText(fields.join(' '));
+  const fieldsToSearch = combinedField ? [...normalizedFields, combinedField] : normalizedFields;
+
+  let bestScore = 0;
+  for (const field of fieldsToSearch) {
+    const compactField = compactSearchText(field);
+    const words = field.split(' ').filter(Boolean);
+    let score = 0;
+
+    if (field === normalizedQuery) score = Math.max(score, 1200);
+    if (field.startsWith(normalizedQuery)) score = Math.max(score, 1000);
+    if (words.some(word => word.startsWith(normalizedQuery))) score = Math.max(score, 900);
+    if (field.includes(normalizedQuery)) score = Math.max(score, 760);
+    if (compactQuery && compactField.includes(compactQuery)) score = Math.max(score, 700);
+
+    const matchedTokens = queryTokens.filter(token => (
+      field.includes(token)
+      || compactField.includes(token)
+      || words.some(word => word.startsWith(token))
+    ));
+
+    if (matchedTokens.length === queryTokens.length && queryTokens.length > 1) {
+      score = Math.max(score, 560 + matchedTokens.length * 35);
+    } else if (matchedTokens.length > 0 && normalizedQuery.length >= 3) {
+      score = Math.max(score, 220 + matchedTokens.length * 45);
+    }
+
+    bestScore = Math.max(bestScore, score);
+  }
+
+  if (bestScore === 0) return 0;
+  return bestScore + Math.min(Number(row.score) || 0, 10);
+}
+
 function serializeAnime(row: any): AnimeSummary | undefined {
   if (!row) return undefined;
   return {
     id: Number(row.id),
     title: row.title || row.russian || row.name || String(row.id),
-    image: row.image_local_url || row.image_url || row.image_preview_url || row.image_original_url || '',
+    image: getAnimeImage(row),
     year: row.year ? Number(row.year) : undefined,
     genres: parseJsonArray(row.genres),
     studios: parseJsonArray(row.studios),
@@ -516,30 +626,37 @@ export function findAnimeById(animeId: number): AnimeSummary | undefined {
 }
 
 export function searchAnimeCatalog(query: string, limit = 50): AnimeSummary[] {
-  const normalizedQuery = `%${query.trim().toLowerCase()}%`;
   return queryAll(
-    `SELECT *
+    `SELECT id, name, russian, title, kind, score, status, episodes, year, english, synonyms,
+            license_name_ru, description, image_url, image_original_url, image_preview_url,
+            image_local_url, genres, studios, country
      FROM shikimori_anime
-     WHERE LOWER(COALESCE(title, '')) LIKE ?
-        OR LOWER(COALESCE(russian, '')) LIKE ?
-        OR LOWER(COALESCE(name, '')) LIKE ?
-        OR LOWER(COALESCE(synonyms, '')) LIKE ?
-        OR LOWER(COALESCE(english, '')) LIKE ?
-     ORDER BY COALESCE(score, 0) DESC, COALESCE(year, 0) DESC, id ASC
-     LIMIT ?`,
-    [normalizedQuery, normalizedQuery, normalizedQuery, normalizedQuery, normalizedQuery, limit]
-  ).map(serializeAnime).filter(Boolean) as AnimeSummary[];
+     WHERE COALESCE(title, russian, name, '') != ''`
+  )
+    .map(row => ({ row, relevance: scoreSearchRow(row, query) }))
+    .filter(item => item.relevance > 0)
+    .sort((a, b) => (
+      b.relevance - a.relevance
+      || (Number(b.row.score) || 0) - (Number(a.row.score) || 0)
+      || (Number(b.row.year) || 0) - (Number(a.row.year) || 0)
+      || Number(a.row.id) - Number(b.row.id)
+    ))
+    .slice(0, limit)
+    .map(item => serializeAnime(item.row))
+    .filter(Boolean) as AnimeSummary[];
 }
 
 export function getPopularAnimeFromCatalog(limit = 40): AnimeSummary[] {
   return queryAll(
     `SELECT *
      FROM shikimori_anime
-     WHERE COALESCE(image_local_url, image_url, image_preview_url, image_original_url, '') != ''
-     ORDER BY COALESCE(score, 0) DESC, COALESCE(year, 0) DESC, id ASC
-     LIMIT ?`,
-    [limit]
-  ).map(serializeAnime).filter(Boolean) as AnimeSummary[];
+     WHERE COALESCE(image_local_url, image_url, image_preview_url, image_original_url, image_x96_url, image_x48_url, '') != ''
+     ORDER BY COALESCE(score, 0) DESC, COALESCE(year, 0) DESC, id ASC`
+  )
+    .filter(hasUsableAnimeImage)
+    .map(serializeAnime)
+    .filter((anime): anime is AnimeSummary => Boolean(anime))
+    .slice(0, limit);
 }
 
 export function getRecommendationCandidatesFromCatalog(userRatedIds: Set<number>): AnimeSummary[] {

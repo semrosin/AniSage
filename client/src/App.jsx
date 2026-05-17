@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { NavLink, Navigate, Route, Routes, useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { NavLink, Navigate, Route, Routes, useNavigate, useParams, useLocation, useSearchParams, useNavigationType } from 'react-router-dom';
 import { getCurrentUser, logout, createGuest, restoreGuest, fetchDiscover, searchAnime, getRatings, saveRating, getRecommendations, getAnimeDetails } from './api.js';
 import AnimeCard from './components/AnimeCard.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
@@ -24,10 +24,9 @@ function Header({ user, handleSearch, searchQuery, setSearchQuery }) {
   return (
     <header className="app__header">
       <div>
-        <a href="/" className="app__logo-link">
-          <img className="app__logo app__logo--default" src="/Logo.svg" alt="AniSage" />
-          <img className="app__logo app__logo--rotated" src="/Logo_Rotated.svg" alt="AniSage" />
-        </a>
+        <NavLink to="/" className="app__logo-link">
+          <img className="app__logo" src="/Logo.svg" alt="AniSage" />
+        </NavLink>
       </div>
       <form className="search-form" onSubmit={handleSearch}>
           <input
@@ -41,33 +40,58 @@ function Header({ user, handleSearch, searchQuery, setSearchQuery }) {
             <CiSearch size={20}/>
           </button>
       </form>
-      <a href="/ratings" className="app__user-link">
+      <NavLink to="/ratings" className="app__user-link">
         <img className="app__user-avatar" src={avatarSrc} alt={user.display_name} />
-      </a>
+      </NavLink>
     </header>
+  );
+}
+
+function getStateAnime(location, id) {
+  const stateAnime = location.state?.anime;
+  return stateAnime && String(stateAnime.id) === String(id) ? stateAnime : null;
+}
+
+function hasCompleteAnimeData(anime) {
+  return Boolean(
+    anime
+    && Object.prototype.hasOwnProperty.call(anime, 'episodes')
+    && Object.prototype.hasOwnProperty.call(anime, 'description')
   );
 }
 
 function AnimePage({ ratings, onRate }) {
   const { id } = useParams();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
-  const recommended = searchParams.get('recommended') || false;
-  const [anime, setAnime] = useState(null);
+  const recommended = searchParams.get('recommended') === 'true';
+  const initialAnime = getStateAnime(location, id);
+  const [anime, setAnime] = useState(initialAnime);
   const [userRating, setUserRating] = useState(0);
   const [originalRating, setOriginalRating] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!hasCompleteAnimeData(initialAnime));
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    getAnimeDetails(id).then(data => {
-      setAnime(data);
-      const existingRating = ratings.find(r => r.anime_id == id);
-      if (existingRating) {
-        setUserRating(existingRating.raw_rating);
-        setOriginalRating(existingRating.raw_rating);
-      }
+    const stateAnime = getStateAnime(location, id);
+    if (hasCompleteAnimeData(stateAnime)) {
+      setAnime(stateAnime);
       setLoading(false);
-    }).catch(() => setLoading(false));
+      return;
+    }
+
+    setLoading(true);
+    getAnimeDetails(id)
+      .then(data => setAnime(data))
+      .catch(() => setAnime(null))
+      .finally(() => setLoading(false));
+  }, [id, location.state]);
+
+  useEffect(() => {
+    const existingRating = ratings.find(r => r.anime_id == id);
+    const nextRating = existingRating ? existingRating.raw_rating : 0;
+    setUserRating(nextRating);
+    setOriginalRating(nextRating);
   }, [id, ratings]);
 
   const handleSaveRating = async () => {
@@ -296,6 +320,46 @@ function Footer() {
   );
 }
 
+function ScrollManager() {
+  const location = useLocation();
+  const navigationType = useNavigationType();
+  const positions = useRef(new Map());
+
+  useEffect(() => {
+    const previousRestoration = window.history.scrollRestoration;
+    window.history.scrollRestoration = 'manual';
+
+    return () => {
+      window.history.scrollRestoration = previousRestoration;
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    return () => {
+      positions.current.set(location.key, {
+        x: window.scrollX,
+        y: window.scrollY
+      });
+    };
+  }, [location.key]);
+
+  useLayoutEffect(() => {
+    const savedPosition = positions.current.get(location.key);
+    const nextPosition = navigationType === 'POP' && savedPosition
+      ? savedPosition
+      : { x: 0, y: 0 };
+
+    const restore = () => window.scrollTo(nextPosition.x, nextPosition.y);
+    restore();
+    requestAnimationFrame(restore);
+    const timeoutId = window.setTimeout(restore, 120);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [location.key, navigationType]);
+
+  return null;
+}
+
 function App() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -311,6 +375,7 @@ function App() {
 
   const urlParams = new URLSearchParams(location.search);
   const searchQuery = urlParams.get('q') || '';
+  const isAuthPage = location.pathname === '/login';
 
   useEffect(() => {
     loadUser();
@@ -449,23 +514,26 @@ function App() {
   if (!authChecked) {
     return (
       <>
-        <Header user={null} />
+        {!isAuthPage && <Header user={null} />}
         <div className="app app--loading">
           <p className="app__info-block__title">Загрузка...</p>
         </div>
-        <Footer />
+        {!isAuthPage && <Footer />}
       </>
     );
   }
 
   return (
     <>
-      <Header
-        user={user}
-        searchQuery={searchQuery} 
-        setSearchQuery={setSearchQuery}
-        handleSearch={handleSearch}
-      />
+      {!isAuthPage && (
+        <Header
+          user={user}
+          searchQuery={searchQuery} 
+          setSearchQuery={setSearchQuery}
+          handleSearch={handleSearch}
+        />
+      )}
+      <ScrollManager />
       <div className="app">
         {error && <p className="app__error">{error}</p>}
         <Routes>
@@ -548,7 +616,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
-      <Footer />
+      {!isAuthPage && <Footer />}
     </>
   );
 }
