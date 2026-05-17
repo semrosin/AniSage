@@ -42,7 +42,12 @@ function mapAnimeFields(item) {
     image: item.poster_url || item.image || item.poster || '',
     year: item.release_year || item.year || item.year_of_release || null,
     genres: item.genres || item.categories || [],
-    score: parseFloat(item.score || item.rating || item.mean_score) || 0
+    studios: item.studios || [],
+    score: parseFloat(item.score || item.rating || item.mean_score) || 0,
+    episodes: item.episodes ?? null,
+    status: item.status || null,
+    country: item.country || null,
+    description: item.description || ''
   };
 }
 

@@ -96,26 +96,15 @@ a {
 .app__logo {
   width: 34px;
   height: 34px;
-  transition: opacity 1000ms ease;
+  transition: transform 500ms ease;
   @media screen and (max-width: 500px) {
     width: 32px;
     height: 32px;
   }
 }
 
-.app__logo--rotated {
-  position: absolute;
-  top: 0;
-  left: 0;
-  opacity: 0;
-}
-
-.app__logo-link:hover .app__logo--default {
-  opacity: 0;
-}
-
-.app__logo-link:hover .app__logo--rotated {
-  opacity: 1;
+.app__logo-link:hover .app__logo {
+  transform: rotate(180deg);
 }
 
 .app__user {
@@ -158,14 +147,19 @@ a {
   flex-direction: column;
   align-items: center;
   border-radius: 24px;
-  padding: 54px;
-  padding-top: 60px;
+  padding: 64px;
   height: 400px;
   width: 380px;
 
-  @media screen and (max-width: 500px) {
+  @media screen and (max-width: 378px) {
     font-size: 1.1rem;
     padding: 30px;
+    padding-top: 60px;
+  }
+
+  @media screen and (max-width: 500px) {
+    font-size: 1.1rem;
+    padding: 50px;
     padding-top: 60px;
   }
 }
@@ -465,16 +459,6 @@ a {
     grid-template-columns: 1fr;
   }
 
-  @media screen and (max-width: 768px) {
-    p:has(strong:contains("Описание")) {
-      display: block;
-    }
-    
-    p:has(strong:contains("Описание")) strong {
-      display: block;
-      margin-bottom: 6px;
-    }
-  }
 }
 
 .anime-page__meta p {

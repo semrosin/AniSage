@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 export default function AnimeCard({ anime, recommendations, withRating, initialRating, onRate }) {
   const [userRating, setUserRating] = useState(initialRating || 0);
@@ -24,13 +25,13 @@ export default function AnimeCard({ anime, recommendations, withRating, initialR
   if (withRating) {
     return (
       <div className="anime-card anime-card--with-rating">
-        <a href={animeUrl} className="anime-card__link">
+        <Link to={animeUrl} state={{ anime }} className="anime-card__link">
           <div className="anime-card__image" style={{ backgroundImage: `url(${`/api/image?url=${encodeURIComponent(anime.image)}`|| ''})` }} />
-        </a>
+        </Link>
         <div className="anime-card__right">
-          <a href={animeUrl} className="anime-card__title-link">
+          <Link to={animeUrl} state={{ anime }} className="anime-card__title-link">
             <p className="anime-card__title">{anime.title}</p>
-          </a>
+          </Link>
           <div className="anime-card__rating">
             <div className="stars">
               {Array.from({ length: 10 }, (_, i) => i + 1).map(star => (
@@ -57,11 +58,11 @@ export default function AnimeCard({ anime, recommendations, withRating, initialR
   }
 
   return (
-    <a href={animeUrl} className="anime-card">
+    <Link to={animeUrl} state={{ anime }} className="anime-card">
       <article className="anime-card">
         <div className="anime-card__image" style={{ backgroundImage: `url(${`/api/image?url=${encodeURIComponent(anime.image)}`|| ''})` }} />
         <p className="anime-card__title">{anime.title}</p>
       </article>
-    </a>
+    </Link>
   );
 }
