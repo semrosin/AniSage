@@ -140,6 +140,10 @@ function resolveShikimoriUrl(url?: string | null) {
   return url.startsWith('/') ? `https://shikimori.one${url}` : url;
 }
 
+function isMissingShikimoriImageUrl(url: string) {
+  return /\/assets\/globals\/missing_[^/.]+\./i.test(url);
+}
+
 function getImageFileName(url: string) {
   return `${crypto.createHash('md5').update(url).digest('hex')}.jpg`;
 }
@@ -324,9 +328,10 @@ function extractImageUrls(item: any): Omit<ImageInfo, 'localPath' | 'localUrl' |
   const x96Url = resolveShikimoriUrl(item.image?.x96);
   const x48Url = resolveShikimoriUrl(item.image?.x48);
   const originalUrl = resolveShikimoriUrl(item.image?.original);
+  const usableUrls = [previewUrl, x96Url, x48Url, originalUrl].filter(url => url && !isMissingShikimoriImageUrl(url));
 
   return {
-    url: previewUrl || x96Url || x48Url || originalUrl,
+    url: usableUrls[0] || '',
     originalUrl,
     previewUrl,
     x96Url,

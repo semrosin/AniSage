@@ -321,6 +321,29 @@ function parseJsonArray(value: unknown): string[] {
   }
 }
 
+function isMissingImageUrl(value: unknown) {
+  return typeof value === 'string' && /\/assets\/globals\/missing_[^/.]+\./i.test(value);
+}
+
+function getAnimeImageSources(row: any) {
+  return [
+    row.image_url,
+    row.image_preview_url,
+    row.image_original_url,
+    row.image_x96_url,
+    row.image_x48_url
+  ].filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+}
+
+function hasUsableAnimeImage(row: any) {
+  return getAnimeImageSources(row).some(image => !isMissingImageUrl(image));
+}
+
+function getAnimeImage(row: any) {
+  const sourceImages = getAnimeImageSources(row);
+  return row.image_local_url || sourceImages[0] || '';
+}
+
 function normalizeSearchText(value: unknown) {
   return String(value || '')
     .normalize('NFKD')
@@ -413,7 +436,7 @@ function serializeAnime(row: any): AnimeSummary | undefined {
   return {
     id: Number(row.id),
     title: row.title || row.russian || row.name || String(row.id),
-    image: row.image_local_url || row.image_url || row.image_preview_url || row.image_original_url || '',
+    image: getAnimeImage(row),
     year: row.year ? Number(row.year) : undefined,
     genres: parseJsonArray(row.genres),
     studios: parseJsonArray(row.studios),
@@ -627,11 +650,13 @@ export function getPopularAnimeFromCatalog(limit = 40): AnimeSummary[] {
   return queryAll(
     `SELECT *
      FROM shikimori_anime
-     WHERE COALESCE(image_local_url, image_url, image_preview_url, image_original_url, '') != ''
-     ORDER BY COALESCE(score, 0) DESC, COALESCE(year, 0) DESC, id ASC
-     LIMIT ?`,
-    [limit]
-  ).map(serializeAnime).filter(Boolean) as AnimeSummary[];
+     WHERE COALESCE(image_local_url, image_url, image_preview_url, image_original_url, image_x96_url, image_x48_url, '') != ''
+     ORDER BY COALESCE(score, 0) DESC, COALESCE(year, 0) DESC, id ASC`
+  )
+    .filter(hasUsableAnimeImage)
+    .map(serializeAnime)
+    .filter((anime): anime is AnimeSummary => Boolean(anime))
+    .slice(0, limit);
 }
 
 export function getRecommendationCandidatesFromCatalog(userRatedIds: Set<number>): AnimeSummary[] {
