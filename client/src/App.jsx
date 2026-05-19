@@ -24,7 +24,7 @@ function Header({ user, handleSearch, searchQuery, setSearchQuery }) {
   return (
     <header className="app__header">
       <div>
-        <NavLink to="/" className="app__logo-link">
+        <NavLink to="/" className="app__logo-link" title="На главную">
           <img className="app__logo" src="/Logo.svg" alt="AniSage" />
         </NavLink>
       </div>
@@ -40,7 +40,7 @@ function Header({ user, handleSearch, searchQuery, setSearchQuery }) {
             <CiSearch size={20}/>
           </button>
       </form>
-      <NavLink to="/ratings" className="app__user-link">
+      <NavLink to="/ratings" className="app__user-link" title="Ваш профиль и оценки">
         <img className="app__user-avatar" src={avatarSrc} alt={user.display_name} />
       </NavLink>
     </header>
@@ -187,7 +187,7 @@ function LoginPage({ error }) {
           />
           <span>
             Я принимаю{' '}
-            <NavLink to="/privacy" className="login-card__privacy-link">
+            <NavLink to="/privacy" className="login-card__privacy-link" title="Политика конфиденциальности">
               политику конфиденциальности
             </NavLink>
           </span>
@@ -309,10 +309,10 @@ function Footer() {
   return (
     <footer className="footer">
       <div className="footer-left">
-        <NavLink to="/privacy" className="footer-link">Политика конфиденциальности</NavLink>
+        <NavLink to="/privacy" className="footer-link" title="Политика конфиденциальности">Политика конфиденциальности</NavLink>
       </div>
       <div className="footer-right">
-        <a href="https://boosty.to/semrosin/donate" target="_blank" rel="noopener noreferrer" className="footer-icon footer-icon--heart">
+        <a href="https://boosty.to/semrosin/donate" target="_blank" rel="noopener noreferrer" className="footer-icon footer-icon--heart" title="Поддержать проект на Boosty">
           <FaHeart size={22} />
         </a>
       </div>
@@ -372,6 +372,7 @@ function App() {
   const [status, setStatus] = useState('loading');
   const [error, setError] = useState('');
   const [authChecked, setAuthChecked] = useState(false);
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
 
   const urlParams = new URLSearchParams(location.search);
   const searchQuery = urlParams.get('q') || '';
@@ -380,6 +381,17 @@ function App() {
   useEffect(() => {
     loadUser();
   }, []);
+
+  useEffect(() => {
+    const isLightTheme = theme === 'light';
+    document.body.classList.toggle('theme-light', isLightTheme);
+    document.documentElement.style.colorScheme = isLightTheme ? 'light' : 'dark';
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  function toggleTheme() {
+    setTheme((currentTheme) => currentTheme === 'light' ? 'dark' : 'light');
+  }
 
   async function loadUser() {
     try {
@@ -589,6 +601,8 @@ function App() {
                 ratings={ratings}
                 onRate={handleRate}
                 onLogout={handleLogout}
+                theme={theme}
+                onToggleTheme={toggleTheme}
               />
             }
           />
