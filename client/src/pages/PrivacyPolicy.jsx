@@ -73,7 +73,7 @@ function PrivacyPolicy() {
         <h2>7. Контакты</h2>
         <p>
           По вопросам, связанным с обработкой персональных данных, вы можете обратиться
-          к разработчику через Telegram: <a href="https://t.me/semrosin" target="_blank" rel="noopener noreferrer">https://t.me/semrosin</a>
+          к разработчику через электронную почту: <a href="mailto:semen.rosin1@gmail.com" target="_blank" rel="noopener noreferrer">semen.rosin1@gmail.com</a>
         </p>
       </section>
     </main>
