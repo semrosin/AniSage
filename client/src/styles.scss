@@ -1,6 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap');
+
 :root {
   color-scheme: dark;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Google Sans', 'Inter', system-ui, sans-serif;
   background: #0f1218;
   color: var(--text-primary);
   --page-bg: #0d0324;
@@ -316,7 +318,7 @@ a {
 
 .search-form__field {
   width: 100%;
-  padding: 10px 64px 12px 22px;
+  padding: 10px 64px 10px 22px;
   background: var(--surface-raised);
   border: 1px solid var(--input-border);
   border-radius: 24px;
