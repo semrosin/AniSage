@@ -1,6 +1,6 @@
 import React from 'react';
 import AnimeCard from '../components/AnimeCard.jsx';
-import { RxExit } from 'react-icons/rx';
+import { RxExit, RxMoon, RxSun } from 'react-icons/rx';
 
 const getPictureUrl = (pictureId) => 
   `https://avatars.yandex.net/get-yapic/${pictureId}/islands-200`;
@@ -17,7 +17,7 @@ function ratingToAnime(rating) {
   };
 }
 
-export default function RatingsPage({ user, ratings, onRate, onLogout }) {
+export default function RatingsPage({ user, ratings, onRate, onLogout, theme, onToggleTheme }) {
   if (!user) {
     return (
       <main className="ratings-page">
@@ -31,27 +31,39 @@ export default function RatingsPage({ user, ratings, onRate, onLogout }) {
     : getPictureUrl(user.picture);
 
   const displayName = user.display_name;
+  const isLightTheme = theme === 'light';
+  const themeLabel = isLightTheme ? 'Включить тёмную тему' : 'Включить светлую тему';
 
   return (
     <main className="ratings-page">
       <div className="ratings-page__header">
-        <img className="ratings-page__avatar" src={avatarSrc} alt={displayName} />
         <div className="ratings-page__user-info">
           <h1 className="ratings-page__name">{displayName}</h1>
           {user.is_guest ? (
             <p className="ratings-page__email">
-              <a href="/login" className="ratings-page__login-link">Авторизуйтесь</a>, чтобы сохранить свои оценки
+              <a href="/login" className="ratings-page__login-link" title="Перейти на страницу входа">Авторизуйтесь</a>, чтобы сохранить свои оценки
             </p>
           ) : (
             <p className="ratings-page__email">{user.email}</p>
           )}
         </div>
-        {!user.is_guest && (
-          <button className="ratings-page__logout" type="button" onClick={onLogout} aria-label="Выйти">
-            <span className="ratings-page__logout-text">Выйти</span>
-            <RxExit className="ratings-page__logout-icon" size={20} />
+        <div className="ratings-page__actions">
+          <button
+            className="ratings-page__theme-toggle"
+            type="button"
+            onClick={onToggleTheme}
+            aria-label={themeLabel}
+            title={themeLabel}
+          >
+            {isLightTheme ? <RxMoon size={20} /> : <RxSun size={20} />}
           </button>
-        )}
+          {!user.is_guest && (
+            <button className="ratings-page__logout" type="button" onClick={onLogout} aria-label="Выйти" title="Выйти из аккаунта">
+              <span className="ratings-page__logout-text">Выйти</span>
+              <RxExit className="ratings-page__logout-icon" size={20} />
+            </button>
+          )}
+        </div>
       </div>
       <section className="ratings-page__list">
         {ratings.length === 0 ? (

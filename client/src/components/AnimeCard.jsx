@@ -25,11 +25,11 @@ export default function AnimeCard({ anime, recommendations, withRating, initialR
   if (withRating) {
     return (
       <div className="anime-card anime-card--with-rating">
-        <Link to={animeUrl} state={{ anime }} className="anime-card__link">
+        <Link to={animeUrl} state={{ anime }} className="anime-card__link" title={anime.title}>
           <div className="anime-card__image" style={{ backgroundImage: `url(${`/api/image?url=${encodeURIComponent(anime.image)}`|| ''})` }} />
         </Link>
         <div className="anime-card__right">
-          <Link to={animeUrl} state={{ anime }} className="anime-card__title-link">
+          <Link to={animeUrl} state={{ anime }} className="anime-card__title-link" title={anime.title}>
             <p className="anime-card__title">{anime.title}</p>
           </Link>
           <div className="anime-card__rating">
@@ -58,7 +58,7 @@ export default function AnimeCard({ anime, recommendations, withRating, initialR
   }
 
   return (
-    <Link to={animeUrl} state={{ anime }} className="anime-card">
+    <Link to={animeUrl} state={{ anime }} className="anime-card" title={anime.title}>
       <article className="anime-card">
         <div className="anime-card__image" style={{ backgroundImage: `url(${`/api/image?url=${encodeURIComponent(anime.image)}`|| ''})` }} />
         <p className="anime-card__title">{anime.title}</p>

@@ -1,8 +1,29 @@
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap');
+
 :root {
   color-scheme: dark;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Google Sans', 'Inter', system-ui, sans-serif;
   background: #0f1218;
-  color: #f7f7fb;
+  color: var(--text-primary);
+  --page-bg: #0d0324;
+  --text-primary: #f7f7fb;
+  --text-secondary: #bbc1d2;
+  --text-muted: #adadc2;
+  --text-soft: #b6b6b6;
+  --surface: rgba(255, 255, 255, 0.03);
+  --surface-raised: rgba(255, 255, 255, 0.05);
+  --border-soft: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.3);
+  --input-border: rgba(255, 255, 255, 0.1);
+  --accent: #E46AE6;
+  --accent-soft: #fd90ff6e;
+  --danger: #fd5858;
+  --error: #ff7a7a;
+  --tooltip-bg: #f7f7fb;
+  --tooltip-text: #151226;
+  --shadow-soft: rgba(91, 102, 255, 0.18);
+  --disabled-text: rgba(255, 255, 255, 0.45);
+  --disabled-border: rgba(255, 255, 255, 0.32);
 }
 
 * {
@@ -12,7 +33,32 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: #0d0324;
+  max-width: 100vw;
+  background: var(--page-bg);
+  color: var(--text-primary);
+  transition: background-color 220ms ease, color 220ms ease;
+}
+
+body.theme-light {
+  --page-bg: #e1dceb;
+  --text-primary: #201b2f;
+  --text-secondary: #5c5771;
+  --text-muted: #716b86;
+  --text-soft: #665f7a;
+  --surface: rgba(255, 255, 255, 0.76);
+  --surface-raised: rgba(255, 255, 255, 0.92);
+  --border-soft: rgba(54, 43, 88, 0.16);
+  --border-strong: rgba(54, 43, 88, 0.28);
+  --input-border: rgba(54, 43, 88, 0.18);
+  --accent: #b832bc;
+  --accent-soft: rgba(184, 50, 188, 0.22);
+  --danger: #c7293f;
+  --error: #c7293f;
+  --tooltip-bg: #211a31;
+  --tooltip-text: #ffffff;
+  --shadow-soft: rgba(72, 50, 120, 0.14);
+  --disabled-text: rgba(32, 27, 47, 0.42);
+  --disabled-border: rgba(32, 27, 47, 0.22);
 }
 
 button,
@@ -109,8 +155,8 @@ a {
 
 .app__user {
   padding: 16px 20px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
   border-radius: 18px;
   &-avatar {
     width: 40px;
@@ -135,11 +181,11 @@ a {
 .app__info-block__title,
 .app__error {
   margin: 20px 0;
-  color: #adadc2;
+  color: var(--text-muted);
 }
 
 .app__error {
-  color: #ff7a7a;
+  color: var(--error);
 }
 
 .login-card {
@@ -172,7 +218,7 @@ a {
   font-size: 1.2rem;
   font-weight: 500;
   padding-bottom: 15px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  border-bottom: 1px solid var(--border-strong);
 
   @media screen and (max-width: 500px) {
     font-size: 1.1rem;
@@ -182,7 +228,7 @@ a {
 .search-page__text,
 .recommendations-page__text {
   margin: 0;
-  color: #bbc1d2;
+  color: var(--text-secondary);
 }
 
 .login-card__buttons {
@@ -198,7 +244,7 @@ a {
   align-items: center;
   justify-content: center;
   border: 2px solid;
-  color: #fff;
+  color: var(--text-primary);
   padding: 14px 22px;
   border-radius: 14px;
   cursor: pointer;
@@ -213,8 +259,8 @@ a {
 }
 
 .login-card__button--disabled {
-  color: rgba(255, 255, 255, 0.45);
-  border-color: rgba(255, 255, 255, 0.32);
+  color: var(--disabled-text);
+  border-color: var(--disabled-border);
   cursor: not-allowed;
   pointer-events: auto;
 }
@@ -222,7 +268,7 @@ a {
 .login-card__button--disabled:hover {
   transform: none;
   background: transparent;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--disabled-text);
   box-shadow: none;
 }
 
@@ -233,7 +279,7 @@ a {
   gap: 16px;
   width: fit-content;
   max-width: 70%;
-  color: #bbc1d2;
+  color: var(--text-secondary);
   font-size: 0.85rem;
   line-height: 1.4;
   text-align: left;
@@ -248,18 +294,18 @@ a {
   width: 16px;
   height: 16px;
   margin: 2px 0 0;
-  accent-color: #E46AE6;
+  accent-color: var(--accent);
   cursor: pointer;
   flex: 0 0 auto;
 }
 
 .login-card__privacy-link {
-  color: #E46AE6;
+  color: var(--accent);
   text-decoration: underline;
   text-underline-offset: 2px;
 
   &:hover {
-    color: #f7f7fb;
+    color: var(--text-primary);
   }
 }
 
@@ -272,11 +318,11 @@ a {
 
 .search-form__field {
   width: 100%;
-  padding: 10px 64px 12px 22px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 10px 64px 10px 22px;
+  background: var(--surface-raised);
+  border: 1px solid var(--input-border);
   border-radius: 24px;
-  color: #f8f8ff;
+  color: var(--text-primary);
 }
 
 .search-form__button {
@@ -286,7 +332,7 @@ a {
   transform: translateY(-50%);
   background: transparent;
   border: none;
-  color: #b6b6b6;
+  color: var(--text-soft);
   cursor: pointer;
   padding: 0;
   display: flex;
@@ -296,20 +342,20 @@ a {
 
 .search-form__button:hover {
   background: transparent;
-  color: white;
+  color: var(--text-primary);
 }
 
 .login-card__button:not(.login-card__button--disabled):hover {
   position: relative;
   transform: translateY(-1px);
-  background: white;
-  color: black;
-  box-shadow: 0 8px 40px rgba(91, 102, 255, 0.18);
+  background: var(--text-primary);
+  color: var(--page-bg);
+  box-shadow: 0 8px 40px var(--shadow-soft);
 }
 
 .login-card__error {
   margin-top: 16px;
-  color: #ff8a8a;
+  color: var(--error);
 }
 
 .anime-list {
@@ -478,25 +524,25 @@ a {
   }
 
   & strong {
-    color: #b6b6b6;
+    color: var(--text-soft);
     font-weight: 400;
     display: block;
     margin-bottom: 8px;
   }
 
   & p:last-child {
-    color: #f7f7fb;
+    color: var(--text-primary);
     line-height: 1.5;
   }
 }
 
 .anime-page__meta strong {
-  color: #b6b6b6;
+  color: var(--text-soft);
   font-weight: 400;
 }
 
 .anime-page__meta span {
-  color: #f7f7fb;
+  color: var(--text-primary);
 }
 
 .anime-page__rating {
@@ -546,7 +592,7 @@ a {
     gap: 24px;
     margin-bottom: 48px;
     padding-bottom: 24px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid var(--input-border);
   }
 
   &__avatar {
@@ -580,30 +626,51 @@ a {
 
   &__email {
     margin: 0;
-    color: #adadc2;
+    color: var(--text-muted);
     font-size: 0.95rem;
     overflow-wrap: anywhere;
   }
 
+  &__actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-left: auto;
+    align-self: flex-end;
+    @media screen and (max-width: 500px) {
+      gap: 0;
+    }
+  }
+
+  &__theme-toggle,
   &__logout {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    margin-left: auto;
-    align-self: flex-end;
-    padding: 8px 0;
+    min-width: 40px;
+    height: 40px;
     border: none;
+    border-radius: 10px;
     background: transparent;
-    color: #fd5858;
     cursor: pointer;
     font-size: 1rem;
     font-weight: 500;
-    transition: color 200ms ease, transform 160ms ease;
+    transition: color 200ms ease, background-color 200ms ease, transform 160ms ease;
 
     &:hover {
       transform: translateY(-1px);
+      background: var(--surface);
     }
+  }
+
+  &__theme-toggle {
+    color: var(--text-primary);
+  }
+
+  &__logout {
+    padding: 8px;
+    color: var(--danger);
 
     @media screen and (max-width: 500px) {
       flex: 0 0 40px;
@@ -629,12 +696,12 @@ a {
   }
 
   &__login-link {
-    color: #E46AE6;
+    color: var(--accent);
     text-decoration: underline;
     text-underline-offset: 2px;
 
     &:hover {
-      color: #f7f7fb;
+      color: var(--text-primary);
     }
   }
 
@@ -660,8 +727,8 @@ a {
   flex-direction: row;
   gap: 20px;
   padding: 16px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
   border-radius: 20px;
   min-height: 0;
   text-decoration: none;
@@ -758,7 +825,7 @@ a {
 
   .anime-card__save-btn {
     padding: 6px 16px;
-    background: #E46AE6;
+    background: var(--accent);
     border: none;
     border-radius: 8px;
     color: white;
@@ -773,8 +840,8 @@ a {
     }
 
     &:disabled {
-      background: #fd90ff6e;
-      color: #cacaca;
+      background: var(--accent-soft);
+      color: var(--text-secondary);
       cursor: not-allowed;
     }
   }
@@ -782,10 +849,9 @@ a {
 
 .anime-page__save-btn {
   padding: 10px 20px;
-  background: #E46AE6;
+  background: var(--accent);
   border: none;
   border-radius: 10px;
-  color: white;
   cursor: pointer;
   font-size: 1rem;
   font-weight: 450;
@@ -797,8 +863,8 @@ a {
   }
 
   &:disabled {
-    background: #fd90ff6e;
-    color: #cacaca;
+    background: var(--accent-soft);
+    color: var(--text-secondary);
     cursor: not-allowed;
   }
 }
@@ -811,7 +877,7 @@ a {
   margin-top: 48px;
   margin-left: 20px;
   margin-right: 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--border-soft);
 
   @media screen and (max-width: 500px) {
     flex-direction: column;
@@ -828,17 +894,17 @@ a {
   }
 
   &-link {
-    color: #b6b6b6;
+    color: var(--text-soft);
     font-size: 0.9rem;
     transition: color 200ms ease;
 
     &:hover {
-      color: #f7f7fb;
+      color: var(--text-primary);
     }
   }
 
   &-icon {
-    color: #ffffff;
+    color: var(--text-primary);
     transition: color 200ms ease, transform 200ms ease;
 
     &:hover {
@@ -846,14 +912,14 @@ a {
     }
 
     &--heart {
-      color: #E46AE6;
+      color: var(--accent);
     }
   }
 }
 
 .footer-link:hover
  {
-  color: #f7f7fb;
+  color: var(--text-primary);
  }
 
 .privacy-policy {
@@ -886,17 +952,17 @@ a {
       font-size: 1.2rem;
       font-weight: 500;
       margin-bottom: 12px;
-      color: #f7f7fb;
+      color: var(--text-primary);
     }
 
     p {
-      color: #bbc1d2;
+      color: var(--text-secondary);
       line-height: 1.6;
       margin: 0 0 12px;
     }
 
     ul {
-      color: #bbc1d2;
+      color: var(--text-secondary);
       margin: 0 0 12px;
       padding-left: 24px;
 
@@ -906,12 +972,12 @@ a {
     }
 
     a {
-      color: #E46AE6;
+      color: var(--accent);
       text-decoration: underline;
       text-underline-offset: 2px;
 
       &:hover {
-        color: #f7f7fb;
+        color: var(--text-primary);
       }
     }
   }

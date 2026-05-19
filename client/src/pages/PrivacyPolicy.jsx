@@ -24,7 +24,7 @@ function PrivacyPolicy() {
           <li>Поставленные пользователем оценки и сведения об оцененных произведениях</li>
         </ul>
         <p>
-          Данные собираются только для функционирования функционала рекомендательной системы
+          Данные собираются только для функционирования рекомендательной системы
           и персонализации интерфейса.
         </p>
       </section>
@@ -73,7 +73,7 @@ function PrivacyPolicy() {
         <h2>7. Контакты</h2>
         <p>
           По вопросам, связанным с обработкой персональных данных, вы можете обратиться
-          к разработчику через Telegram: <a href="https://t.me/semrosin" target="_blank" rel="noopener noreferrer">https://t.me/semrosin</a>
+          к разработчику через электронную почту: <a href="mailto:semen.rosin1@gmail.com" target="_blank" rel="noopener noreferrer" title="Написать на email разработчика">semen.rosin1@gmail.com</a>
         </p>
       </section>
     </main>
