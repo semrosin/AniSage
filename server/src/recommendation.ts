@@ -269,11 +269,11 @@ export function buildRecommendations(
     .filter(candidate => !looksLikeContinuation(candidate.title))
     .map(candidate => ({
       anime: candidate,
-      score: scoreAnime(candidate, metrics, similarityMatrix)
+      recommendationScore: scoreAnime(candidate, metrics, similarityMatrix)
     }))
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => b.recommendationScore - a.recommendationScore);
 
-  const recommendations: Array<AnimeSummary & { score: number }> = [];
+  const recommendations: Array<AnimeSummary & { recommendationScore: number }> = [];
   for (const item of scoredCandidates) {
     const seriesKey = getRecommendationSeriesKey(item.anime);
     if (ratedSeriesKeys.has(seriesKey) || recommendedSeriesKeys.has(seriesKey)) {
@@ -281,7 +281,7 @@ export function buildRecommendations(
     }
 
     recommendedSeriesKeys.add(seriesKey);
-    recommendations.push({ ...item.anime, score: item.score });
+    recommendations.push({ ...item.anime, recommendationScore: item.recommendationScore });
     if (recommendations.length >= 24) break;
   }
 
